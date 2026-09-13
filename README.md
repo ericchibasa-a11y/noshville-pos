@@ -57,3 +57,10 @@ Do not change DNS until the GitHub Pages version is working.
 ## Important V1 note
 Sales are currently written in two steps: sale header, then sale items. The existing database trigger deducts stock when sale items are inserted.
 For higher resilience in V2, move sale completion into one database RPC transaction.
+
+## V1.1 fixes
+- Cash tendered now shows live customer change before completing a sale.
+- Cash-up variance stays blank until actual cash is entered.
+- Sale search field width fixed.
+- Purchase cost logic changed to weighted-average inventory cost.
+- Run `fix_weighted_average_cost.sql` once in the Noshville Supabase SQL Editor.

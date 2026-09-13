@@ -13,3 +13,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0}.summary-card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px}.summary-card strong{display:block;font-size:22px;margin-top:4px}
 #toast{position:fixed;right:16px;bottom:16px;z-index:99;max-width:420px}.toast{background:#111827;color:#fff;padding:12px 14px;border-radius:8px;margin-top:8px;box-shadow:0 6px 20px rgba(0,0,0,.2)}.toast.error{background:#991b1b}
 @media(max-width:850px){.grid.two{grid-template-columns:1fr}.sticky{position:static}.tabs{padding-bottom:12px}.topbar{align-items:flex-start}}
+
+.toolbar input{min-width:240px}.toolbar select{width:260px;flex:0 0 260px}
+.change-row{padding:8px 0;border-top:1px solid var(--line);font-size:18px}.change-row strong{color:var(--brand)}
+@media(max-width:650px){.toolbar{flex-direction:column}.toolbar input,.toolbar select{width:100%;min-width:0;flex:auto}}

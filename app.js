@@ -42,6 +42,17 @@ function renderProductGrid() {
   $('productGrid').innerHTML=list.map(p=>`<div class="product-card" data-id="${p.id}"><strong>${p.name}</strong><div>${p.brand||''} ${p.pack_size||''}</div><div class="price">${money(p.selling_price)}</div><div class="stock">Stock: ${Number(p.stock_qty).toFixed(3)}</div></div>`).join('');
   document.querySelectorAll('.product-card').forEach(el=>el.onclick=()=>addToCart(el.dataset.id));
 }
+
+function updateTenderChange() {
+  const payment=$('paymentMethod').value;
+  const totalText=$('total').textContent.replace('R','').replace(/,/g,'');
+  const total=Number(totalText||0);
+  const tender=Number($('amountTendered').value||0);
+  const change = payment==='cash' ? Math.max(0,tender-total) : 0;
+  $('changeDue').textContent=money(change);
+  $('changeRow').classList.toggle('hidden',payment!=='cash');
+}
+
 function addToCart(id) {
   const p=products.find(x=>x.id===id); if(!p) return;
   const existing=cart.find(x=>x.id===id);
@@ -55,7 +66,7 @@ function renderCart() {
   document.querySelectorAll('[data-q]').forEach(el=>el.onchange=()=>{const i=+el.dataset.q; const q=+el.value; if(q<=0)cart.splice(i,1); else if(cart[i].track_stock && q>Number(cart[i].stock_qty)){toast('Not enough stock',true); el.value=cart[i].qty;} else cart[i].qty=q; renderCart();});
   document.querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>{cart.splice(+el.dataset.r,1);renderCart();});
   const sub=cart.reduce((a,x)=>a+x.qty*Number(x.selling_price),0), disc=Number($('discount').value||0), total=Math.max(0,sub-disc);
-  $('subtotal').textContent=money(sub); $('total').textContent=money(total);
+  $('subtotal').textContent=money(sub); $('total').textContent=money(total); updateTenderChange();
 }
 async function completeSale() {
   if(!cart.length) return toast('Add items first',true);
@@ -136,14 +147,19 @@ async function cashupPreview() {
   const s=sales.data||[], e=exp.data||[];
   const sums={cash:0,card:0,eft:0,other:0}; s.forEach(x=>sums[x.payment_method]=(sums[x.payment_method]||0)+Number(x.total_amount));
   const cashExp=e.filter(x=>x.payment_method==='cash').reduce((a,x)=>a+Number(x.amount),0);
-  const opening=+$('openingFloat').value||0, expected=opening+sums.cash-cashExp, actual=+$('actualCash').value||0, variance=actual-expected;
+  const opening=+$('openingFloat').value||0, expected=opening+sums.cash-cashExp;
+  const actualRaw=$('actualCash').value;
+  const hasActual=actualRaw!=='' && actualRaw!==null;
+  const actual=hasActual ? Number(actualRaw) : null;
+  const variance=hasActual ? actual-expected : null;
   $('cashupPreview').innerHTML=[
-    ['Cash Sales',money(sums.cash)],['Card',money(sums.card)],['EFT',money(sums.eft)],['Cash Expenses',money(cashExp)],['Expected Cash',money(expected)],['Variance',money(variance)]
+    ['Cash Sales',money(sums.cash)],['Card',money(sums.card)],['EFT',money(sums.eft)],['Cash Expenses',money(cashExp)],['Expected Cash',money(expected)],['Variance',hasActual?money(variance):'—']
   ].map(x=>`<div class="summary-card"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
   return {...sums,cashExp,opening,expected,actual,variance};
 }
 async function saveCashup() {
   const v=await cashupPreview(), d=$('cDate').value||today();
+  if(v.actual===null) return toast('Enter actual cash counted before saving cash-up',true);
   const payload={cashup_date:d,cashier_id:session.user.id,opening_float:v.opening,cash_sales:v.cash,card_sales:v.card,eft_sales:v.eft,other_sales:v.other,cash_expenses:v.cashExp,expected_cash:v.expected,actual_cash:v.actual,variance:v.variance,notes:$('cashupNotes').value||null,created_by:session.user.id};
   const {error}=await sb.from('cashups').insert(payload);if(error)return toast(error.message,true);
   toast('Cash-up saved'); await loadCashups();
@@ -190,6 +206,7 @@ $('bootstrapBtn').onclick=bootstrapManager;
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 $('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=renderProductGrid;$('discount').oninput=renderCart;
+$('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
 $('completeSaleBtn').onclick=completeSale;$('clearCartBtn').onclick=()=>{cart=[];renderCart();};
 $('saveProductBtn').onclick=saveProduct;$('saveSupplierBtn').onclick=saveSupplier;$('recordPurchaseBtn').onclick=recordPurchase;$('saveExpenseBtn').onclick=saveExpense;
 $('cDate').onchange=cashupPreview;$('openingFloat').oninput=cashupPreview;$('actualCash').oninput=cashupPreview;$('saveCashupBtn').onclick=saveCashup;$('refreshReportsBtn').onclick=loadReports;
