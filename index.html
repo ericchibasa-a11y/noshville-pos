@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Noshville Foods POS</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="toast"></div>
+
+  <section id="authView" class="auth-shell">
+    <div class="auth-card">
+      <h1>Noshville Foods POS</h1>
+      <p class="muted">Secure sign in</p>
+      <input id="email" type="email" placeholder="Email address" />
+      <input id="password" type="password" placeholder="Password" />
+      <div class="row gap">
+        <button id="loginBtn" class="primary">Sign in</button>
+        <button id="signupBtn">Create account</button>
+      </div>
+      <button id="bootstrapBtn" class="warning hidden">Make me first manager</button>
+      <p class="small muted">First manager setup requires the supplied SQL bootstrap script to be run once in Supabase.</p>
+    </div>
+  </section>
+
+  <div id="appView" class="hidden">
+    <header class="topbar">
+      <div>
+        <h1>Noshville Foods POS</h1>
+        <div id="userInfo" class="small"></div>
+      </div>
+      <button id="logoutBtn">Sign out</button>
+    </header>
+
+    <nav class="tabs">
+      <button data-tab="sale" class="active">SALE</button>
+      <button data-tab="products" data-manager>PRODUCTS & PRICING</button>
+      <button data-tab="stock" data-manager>STOCK / PURCHASES</button>
+      <button data-tab="suppliers" data-manager>SUPPLIERS</button>
+      <button data-tab="expenses">EXPENSES</button>
+      <button data-tab="cashup">CASH-UP</button>
+      <button data-tab="reports" data-manager>REPORTS</button>
+    </nav>
+
+    <main>
+      <section id="tab-sale" class="tab active">
+        <div class="grid two">
+          <div>
+            <div class="toolbar">
+              <input id="saleSearch" placeholder="Search product..." />
+              <select id="categoryFilter"><option value="">All categories</option></select>
+            </div>
+            <div id="productGrid" class="product-grid"></div>
+          </div>
+          <div class="panel sticky">
+            <h2>Current Order</h2>
+            <div id="cart"></div>
+            <div class="totals">
+              <div><span>Subtotal</span><strong id="subtotal">R0.00</strong></div>
+              <div><span>Discount</span><input id="discount" type="number" min="0" step="0.01" value="0"/></div>
+              <div class="grand"><span>Total</span><strong id="total">R0.00</strong></div>
+            </div>
+            <select id="paymentMethod">
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="eft">EFT</option>
+              <option value="other">Other</option>
+            </select>
+            <input id="amountTendered" type="number" step="0.01" placeholder="Amount tendered (cash)" />
+            <button id="completeSaleBtn" class="primary full">Complete Sale</button>
+            <button id="clearCartBtn" class="full">Clear Order</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-products" class="tab">
+        <div class="panel">
+          <h2>Products & Pricing</h2>
+          <div class="form-grid">
+            <input id="pName" placeholder="Product name">
+            <input id="pBrand" placeholder="Brand">
+            <input id="pPack" placeholder="Pack size">
+            <input id="pSku" placeholder="SKU">
+            <input id="pBarcode" placeholder="Barcode">
+            <select id="pCategory"></select>
+            <input id="pCost" type="number" step="0.01" placeholder="Cost price">
+            <input id="pSell" type="number" step="0.01" placeholder="Selling price">
+            <input id="pStock" type="number" step="0.001" placeholder="Opening stock">
+            <input id="pReorderLevel" type="number" step="0.001" placeholder="Reorder level">
+            <input id="pReorderQty" type="number" step="0.001" placeholder="Reorder qty">
+          </div>
+          <button id="saveProductBtn" class="primary">Add Product</button>
+          <div id="productsTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-stock" class="tab">
+        <div class="panel">
+          <h2>Stock / Purchases</h2>
+          <div class="form-grid">
+            <select id="purchaseSupplier"></select>
+            <input id="invoiceNo" placeholder="Invoice number">
+            <input id="purchaseDate" type="date">
+            <select id="purchaseProduct"></select>
+            <input id="purchaseQty" type="number" step="0.001" placeholder="Quantity">
+            <input id="purchaseUnitCost" type="number" step="0.01" placeholder="Unit cost">
+          </div>
+          <button id="recordPurchaseBtn" class="primary">Record Purchase</button>
+          <h3>Reorder Monitor</h3>
+          <div id="reorderTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-suppliers" class="tab">
+        <div class="panel">
+          <h2>Suppliers</h2>
+          <div class="form-grid">
+            <input id="sName" placeholder="Supplier name">
+            <input id="sContact" placeholder="Contact person">
+            <input id="sPhone" placeholder="Phone">
+            <input id="sEmail" placeholder="Email">
+          </div>
+          <button id="saveSupplierBtn" class="primary">Add Supplier</button>
+          <div id="suppliersTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-expenses" class="tab">
+        <div class="panel">
+          <h2>Expenses</h2>
+          <div class="form-grid">
+            <input id="eDate" type="date">
+            <input id="eCategory" placeholder="Expense category">
+            <input id="eDescription" placeholder="Description">
+            <input id="eAmount" type="number" step="0.01" placeholder="Amount">
+            <select id="ePayment"><option value="cash">Cash</option><option value="card">Card</option><option value="eft">EFT</option><option value="other">Other</option></select>
+          </div>
+          <button id="saveExpenseBtn" class="primary">Record Expense</button>
+          <div id="expensesTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-cashup" class="tab">
+        <div class="panel">
+          <h2>Cash-Up / Close Day</h2>
+          <div class="form-grid">
+            <input id="cDate" type="date">
+            <input id="openingFloat" type="number" step="0.01" placeholder="Opening float">
+            <input id="actualCash" type="number" step="0.01" placeholder="Actual cash counted">
+            <textarea id="cashupNotes" placeholder="Notes"></textarea>
+          </div>
+          <div id="cashupPreview" class="summary-cards"></div>
+          <button id="saveCashupBtn" class="primary">Save Cash-Up</button>
+          <div id="cashupsTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-reports" class="tab">
+        <div class="panel">
+          <h2>Reports / Profit & Loss</h2>
+          <div class="form-grid">
+            <input id="reportFrom" type="date">
+            <input id="reportTo" type="date">
+          </div>
+          <button id="refreshReportsBtn" class="primary">Refresh Reports</button>
+          <div id="reportCards" class="summary-cards"></div>
+          <h3>Daily Sales</h3>
+          <div id="salesReport" class="table-wrap"></div>
+          <h3>Daily Gross Profit</h3>
+          <div id="profitReport" class="table-wrap"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
