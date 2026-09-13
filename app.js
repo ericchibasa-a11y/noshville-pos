@@ -4,7 +4,6 @@ const SUPABASE_KEY = "sb_publishable_P9Tl9D6E9pEZKZVqDWoKFw_NS1C0qR1";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let session = null, profile = null, products = [], categories = [], suppliers = [], cart = [];
-let activeSaleCategory = '';
 
 const $ = id => document.getElementById(id);
 const money = n => 'R' + Number(n||0).toFixed(2);
@@ -19,6 +18,11 @@ function table(headers, rows) {
 async function loadProfile() {
   const {data,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
   if(error) throw error; profile=data;
+  if(!profile.is_active){
+    await sb.auth.signOut();
+    $('appView').classList.add('hidden'); $('authView').classList.remove('hidden');
+    throw new Error('This staff account is inactive. Please contact the manager.');
+  }
   $('userInfo').textContent=`${profile.full_name||session.user.email} • ${profile.role}`;
   document.querySelectorAll('[data-manager]').forEach(el=>el.classList.toggle('hidden',profile.role!=='manager'));
 }
@@ -32,31 +36,14 @@ async function refreshBase() {
   renderProductGrid(); fillSelects(); renderProductsTable(); renderSuppliersTable();
 }
 function fillSelects() {
-  renderCategoryButtons();
+  $('categoryFilter').innerHTML='<option value="">All categories</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('pCategory').innerHTML='<option value="">Select category</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseSupplier').innerHTML='<option value="">Select supplier</option>'+suppliers.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('countProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
 }
-function renderCategoryButtons() {
-  const box=$('categoryButtons'); if(!box) return;
-  const availableIds=new Set(products.map(p=>p.category_id).filter(Boolean));
-  const visibleCategories=categories.filter(c=>availableIds.has(c.id));
-  if(activeSaleCategory && !availableIds.has(activeSaleCategory)) activeSaleCategory='';
-  box.innerHTML=[
-    `<button type="button" class="category-btn ${activeSaleCategory===''?'active':''}" data-category-id="">ALL</button>`,
-    ...visibleCategories.map(c=>`<button type="button" class="category-btn ${activeSaleCategory===c.id?'active':''}" data-category-id="${c.id}">${c.name}</button>`)
-  ].join('');
-  box.querySelectorAll('.category-btn').forEach(btn=>{
-    btn.onclick=()=>{
-      activeSaleCategory=btn.dataset.categoryId||'';
-      renderCategoryButtons();
-      renderProductGrid();
-    };
-  });
-}
 function renderProductGrid() {
-  const q=$('saleSearch').value.toLowerCase(), cat=activeSaleCategory;
+  const q=$('saleSearch').value.toLowerCase(), cat=$('categoryFilter').value;
   const list=products.filter(p=>(!q || `${p.name} ${p.brand||''} ${p.barcode||''}`.toLowerCase().includes(q)) && (!cat || p.category_id===cat));
   $('productGrid').innerHTML=list.map(p=>{
     const stock=Number(p.stock_qty||0);
@@ -296,6 +283,51 @@ async function loadReports() {
   $('salesReport').innerHTML=table(['Date','Transactions','Sales','Cash','Card','EFT'],sales.map(x=>[x.sale_day,x.transactions,money(x.total_sales),money(x.cash_sales),money(x.card_sales),money(x.eft_sales)]));
   $('profitReport').innerHTML=table(['Date','Revenue','COGS','Gross Profit'],profit.map(x=>[x.sale_day,money(x.revenue),money(x.cost_of_goods),money(x.gross_profit)]));
 }
+
+async function loadStaff() {
+  if(profile?.role!=='manager') return;
+  const {data,error}=await sb.from('profiles').select('id,full_name,role,is_active,created_at').order('full_name');
+  if(error) return toast(error.message,true);
+  const ids=(data||[]).map(x=>x.id);
+  // Emails are fetched securely from the manager Edge Function because auth.users is not exposed to browser clients.
+  const {data:fn,error:fe}=await sb.functions.invoke('manage-staff',{body:{action:'list'}});
+  if(fe) return toast('Staff service: '+fe.message,true);
+  const emailById=Object.fromEntries((fn?.users||[]).map(x=>[x.id,x.email]));
+  $('staffTable').innerHTML=table(['Name','Email','Role','Status','Actions'],(data||[]).map(u=>[
+    u.full_name||'', emailById[u.id]||'', u.role,
+    u.is_active?'<span class="staff-active">ACTIVE</span>':'<span class="staff-inactive">INACTIVE</span>',
+    `<div class="staff-actions">
+      <button data-staff-role="${u.id}" data-next-role="${u.role==='manager'?'salesperson':'manager'}">Make ${u.role==='manager'?'Salesperson':'Manager'}</button>
+      <button data-staff-active="${u.id}" data-next-active="${u.is_active?'false':'true'}">${u.is_active?'Deactivate':'Activate'}</button>
+    </div>`
+  ]));
+  document.querySelectorAll('[data-staff-role]').forEach(b=>b.onclick=()=>updateStaff(b.dataset.staffRole,{role:b.dataset.nextRole}));
+  document.querySelectorAll('[data-staff-active]').forEach(b=>b.onclick=()=>updateStaff(b.dataset.staffActive,{is_active:b.dataset.nextActive==='true'}));
+}
+
+async function createStaff() {
+  if(profile?.role!=='manager') return toast('Manager access required',true);
+  const full_name=$('staffName').value.trim(), email=$('staffEmail').value.trim().toLowerCase(), password=$('staffPassword').value, role=$('staffRole').value;
+  if(!full_name||!email) return toast('Enter employee name and email',true);
+  if(password.length<8) return toast('Temporary password must be at least 8 characters',true);
+  $('createStaffBtn').disabled=true;
+  const {data,error}=await sb.functions.invoke('manage-staff',{body:{action:'create',full_name,email,password,role}});
+  $('createStaffBtn').disabled=false;
+  if(error) return toast(error.message,true);
+  if(data?.error) return toast(data.error,true);
+  toast('Staff account created');
+  $('staffName').value=''; $('staffEmail').value=''; $('staffPassword').value=''; $('staffRole').value='salesperson';
+  await loadStaff();
+}
+
+async function updateStaff(user_id,changes) {
+  if(user_id===session.user.id && changes.is_active===false) return toast('You cannot deactivate your own account',true);
+  const {data,error}=await sb.functions.invoke('manage-staff',{body:{action:'update',user_id,...changes}});
+  if(error) return toast(error.message,true);
+  if(data?.error) return toast(data.error,true);
+  toast('Staff account updated'); await loadStaff();
+}
+
 async function bootstrapManager() {
   const {data,error}=await sb.rpc('bootstrap_first_manager'); if(error)return toast(error.message,true);
   toast('First manager activated'); await loadProfile(); await refreshBase();
@@ -303,7 +335,7 @@ async function bootstrapManager() {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
   $('tab-'+name).classList.add('active'); document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-  if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='cashup'){cashupPreview();loadCashups();} if(name==='reports')loadReports();
+  if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='cashup'){cashupPreview();loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
 }
 async function enterApp() {
   $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
@@ -315,14 +347,14 @@ async function init() {
   if(session) await enterApp();
 }
 $('loginBtn').onclick=async()=>{const {data,error}=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(error)return toast(error.message,true);session=data.session;await enterApp();};
-$('signupBtn').onclick=async()=>{const {data,error}=await sb.auth.signUp({email:$('email').value,password:$('password').value});if(error)return toast(error.message,true);toast(data.session?'Account created and signed in':'Account created. Check email if confirmation is enabled.'); if(data.session){session=data.session;$('bootstrapBtn').classList.remove('hidden');await enterApp();}};
 $('bootstrapBtn').onclick=bootstrapManager;
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-$('saleSearch').oninput=renderProductGrid;$('discount').oninput=renderCart;
+$('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=renderProductGrid;$('discount').oninput=renderCart;
 $('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
 $('completeSaleBtn').onclick=completeSale;$('clearCartBtn').onclick=()=>{cart=[];renderCart();};
 $('saveProductBtn').onclick=saveProduct;$('saveSupplierBtn').onclick=saveSupplier;$('recordPurchaseBtn').onclick=recordPurchase;$('saveExpenseBtn').onclick=saveExpense;
 $('countProduct').onchange=updateCountPreview;$('countedQty').oninput=updateCountPreview;$('saveStockAdjustmentBtn').onclick=saveStockAdjustment;
+$('createStaffBtn').onclick=createStaff;
 $('cDate').onchange=cashupPreview;$('openingFloat').oninput=cashupPreview;$('actualCash').oninput=cashupPreview;$('saveCashupBtn').onclick=saveCashup;$('refreshReportsBtn').onclick=loadReports;
 init();

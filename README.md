@@ -79,9 +79,11 @@ For higher resilience in V2, move sale completion into one database RPC transact
 - Recent stock adjustments remain visible as an audit trail.
 - Tested V1.2 sales, weighted-average costing, cash-up, expense, profit and low-stock logic are unchanged.
 
-
-## V1.4 Category Buttons
-- Replaced the SALE category dropdown with Feasterville-style category buttons.
-- Added ALL plus each active category that contains products.
-- Search continues to work together with the selected category.
-- No database schema, product, stock, pricing, or sale logic changes.
+## V1.4 Users & Salespersons
+- Adds manager-only USERS / STAFF tab.
+- Managers can create staff authentication accounts with name, email, temporary password and role.
+- Managers can switch Salesperson/Manager role and activate/deactivate staff.
+- Public self-registration button is removed.
+- Inactive accounts are blocked from the POS.
+- Requires the `manage-staff` Supabase Edge Function and V1.4 security SQL patch supplied with this package.
+- V1.3 sales, stock, purchases, weighted-average costing, stock count, expenses, cash-up and reports are preserved.

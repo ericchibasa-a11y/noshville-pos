@@ -18,7 +18,6 @@
       <input id="password" type="password" placeholder="Password" />
       <div class="row gap">
         <button id="loginBtn" class="primary">Sign in</button>
-        <button id="signupBtn">Create account</button>
       </div>
       <button id="bootstrapBtn" class="warning hidden">Make me first manager</button>
       <p class="small muted">First manager setup requires the supplied SQL bootstrap script to be run once in Supabase.</p>
@@ -43,6 +42,7 @@
       <button data-tab="expenses">EXPENSES</button>
       <button data-tab="cashup">CASH-UP</button>
       <button data-tab="reports" data-manager>REPORTS</button>
+      <button data-tab="staff" data-manager>USERS / STAFF</button>
     </nav>
 
     <main>
@@ -51,8 +51,8 @@
           <div>
             <div class="toolbar">
               <input id="saleSearch" placeholder="Search product..." />
+              <select id="categoryFilter"><option value="">All categories</option></select>
             </div>
-            <div id="categoryButtons" class="category-buttons" aria-label="Product categories"></div>
             <div id="productGrid" class="product-grid"></div>
           </div>
           <div class="panel sticky">
@@ -199,6 +199,24 @@
           <div id="profitReport" class="table-wrap"></div>
         </div>
       </section>
+
+      <section id="tab-staff" class="tab">
+        <div class="panel">
+          <h2>Users / Staff</h2>
+          <p class="muted">Manager-only staff administration. Create each employee with their own login so sales and cash-ups remain traceable.</p>
+          <div class="form-grid">
+            <input id="staffName" placeholder="Employee full name">
+            <input id="staffEmail" type="email" placeholder="Email address">
+            <input id="staffPassword" type="password" minlength="8" placeholder="Temporary password (min 8 characters)">
+            <select id="staffRole"><option value="salesperson">Salesperson</option><option value="manager">Manager</option></select>
+          </div>
+          <button id="createStaffBtn" class="primary">Create Staff Account</button>
+          <p class="small muted">Give the temporary password to the employee privately. They can use it to sign in immediately.</p>
+          <h3>Existing Staff</h3>
+          <div id="staffTable" class="table-wrap"></div>
+        </div>
+      </section>
+
     </main>
   </div>
 
