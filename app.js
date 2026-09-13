@@ -4,6 +4,7 @@ const SUPABASE_KEY = "sb_publishable_P9Tl9D6E9pEZKZVqDWoKFw_NS1C0qR1";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let session = null, profile = null, products = [], categories = [], suppliers = [], cart = [];
+let activeSaleCategory = '';
 
 const $ = id => document.getElementById(id);
 const money = n => 'R' + Number(n||0).toFixed(2);
@@ -31,14 +32,31 @@ async function refreshBase() {
   renderProductGrid(); fillSelects(); renderProductsTable(); renderSuppliersTable();
 }
 function fillSelects() {
-  $('categoryFilter').innerHTML='<option value="">All categories</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  renderCategoryButtons();
   $('pCategory').innerHTML='<option value="">Select category</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseSupplier').innerHTML='<option value="">Select supplier</option>'+suppliers.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('countProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
 }
+function renderCategoryButtons() {
+  const box=$('categoryButtons'); if(!box) return;
+  const availableIds=new Set(products.map(p=>p.category_id).filter(Boolean));
+  const visibleCategories=categories.filter(c=>availableIds.has(c.id));
+  if(activeSaleCategory && !availableIds.has(activeSaleCategory)) activeSaleCategory='';
+  box.innerHTML=[
+    `<button type="button" class="category-btn ${activeSaleCategory===''?'active':''}" data-category-id="">ALL</button>`,
+    ...visibleCategories.map(c=>`<button type="button" class="category-btn ${activeSaleCategory===c.id?'active':''}" data-category-id="${c.id}">${c.name}</button>`)
+  ].join('');
+  box.querySelectorAll('.category-btn').forEach(btn=>{
+    btn.onclick=()=>{
+      activeSaleCategory=btn.dataset.categoryId||'';
+      renderCategoryButtons();
+      renderProductGrid();
+    };
+  });
+}
 function renderProductGrid() {
-  const q=$('saleSearch').value.toLowerCase(), cat=$('categoryFilter').value;
+  const q=$('saleSearch').value.toLowerCase(), cat=activeSaleCategory;
   const list=products.filter(p=>(!q || `${p.name} ${p.brand||''} ${p.barcode||''}`.toLowerCase().includes(q)) && (!cat || p.category_id===cat));
   $('productGrid').innerHTML=list.map(p=>{
     const stock=Number(p.stock_qty||0);
@@ -301,7 +319,7 @@ $('signupBtn').onclick=async()=>{const {data,error}=await sb.auth.signUp({email:
 $('bootstrapBtn').onclick=bootstrapManager;
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-$('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=renderProductGrid;$('discount').oninput=renderCart;
+$('saleSearch').oninput=renderProductGrid;$('discount').oninput=renderCart;
 $('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
 $('completeSaleBtn').onclick=completeSale;$('clearCartBtn').onclick=()=>{cart=[];renderCart();};
 $('saveProductBtn').onclick=saveProduct;$('saveSupplierBtn').onclick=saveSupplier;$('recordPurchaseBtn').onclick=recordPurchase;$('saveExpenseBtn').onclick=saveExpense;

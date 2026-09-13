@@ -78,3 +78,10 @@ For higher resilience in V2, move sale completion into one database RPC transact
 - Negative differences are recorded as `adjustment_out`.
 - Recent stock adjustments remain visible as an audit trail.
 - Tested V1.2 sales, weighted-average costing, cash-up, expense, profit and low-stock logic are unchanged.
+
+
+## V1.4 Category Buttons
+- Replaced the SALE category dropdown with Feasterville-style category buttons.
+- Added ALL plus each active category that contains products.
+- Search continues to work together with the selected category.
+- No database schema, product, stock, pricing, or sale logic changes.
