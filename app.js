@@ -35,6 +35,7 @@ function fillSelects() {
   $('pCategory').innerHTML='<option value="">Select category</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseSupplier').innerHTML='<option value="">Select supplier</option>'+suppliers.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  $('countProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
 }
 function renderProductGrid() {
   const q=$('saleSearch').value.toLowerCase(), cat=$('categoryFilter').value;
@@ -115,6 +116,77 @@ async function saveProduct() {
   const {error}=await sb.from('products').insert(payload); if(error)return toast(error.message,true);
   toast('Product added'); ['pName','pBrand','pPack','pSku','pBarcode','pCost','pSell','pStock','pReorderLevel','pReorderQty'].forEach(id=>$(id).value=''); await refreshBase();
 }
+
+function updateCountPreview() {
+  const id=$('countProduct').value;
+  const p=products.find(x=>x.id===id);
+  const system=p?Number(p.stock_qty):0;
+  $('systemQty').value=p?system.toFixed(3):'';
+  const raw=$('countedQty').value;
+  if(raw===''){ $('countDifference').value=''; return; }
+  const counted=Number(raw||0);
+  $('countDifference').value=(counted-system).toFixed(3);
+}
+
+async function saveStockAdjustment() {
+  const product_id=$('countProduct').value;
+  const p=products.find(x=>x.id===product_id);
+  if(!p) return toast('Select a product',true);
+  if($('countedQty').value==='') return toast('Enter physical counted quantity',true);
+
+  const systemQty=Number(p.stock_qty||0);
+  const countedQty=Number($('countedQty').value||0);
+  if(countedQty < 0) return toast('Counted quantity cannot be negative',true);
+
+  const diff=Number((countedQty-systemQty).toFixed(3));
+  if(diff===0) return toast('No stock difference to record');
+
+  const movement_type = diff>0 ? 'adjustment_in' : 'adjustment_out';
+
+  const {error:me}=await sb.from('stock_movements').insert({
+    product_id,
+    movement_type,
+    quantity:diff,
+    unit_cost:p.cost_price,
+    reference_type:'stock_count',
+    note:`${$('countReason').value}${$('countNote').value ? ' - '+$('countNote').value : ''}`,
+    created_by:session.user.id
+  });
+  if(me) return toast(me.message,true);
+
+  const {error:pe}=await sb.from('products')
+    .update({stock_qty:countedQty})
+    .eq('id',product_id);
+  if(pe) return toast(pe.message,true);
+
+  toast(`Stock adjusted by ${diff>0?'+':''}${diff.toFixed(3)}`);
+  $('countedQty').value='';
+  $('countDifference').value='';
+  $('countNote').value='';
+  await refreshBase();
+  await loadStockAdjustments();
+}
+
+async function loadStockAdjustments() {
+  const {data,error}=await sb.from('stock_movements')
+    .select('created_at,movement_type,quantity,note,products(name)')
+    .in('movement_type',['adjustment_in','adjustment_out'])
+    .order('created_at',{ascending:false})
+    .limit(50);
+  if(error) return toast(error.message,true);
+
+  $('stockAdjustmentsTable').innerHTML=table(
+    ['Date/Time','Product','Type','Qty','Note'],
+    (data||[]).map(x=>[
+      new Date(x.created_at).toLocaleString(),
+      x.products?.name||'',
+      x.movement_type==='adjustment_in'?'Adjustment In':'Adjustment Out',
+      Number(x.quantity).toFixed(3),
+      x.note||''
+    ])
+  );
+}
+
 async function saveSupplier() {
   const payload={name:$('sName').value.trim(),contact_name:$('sContact').value.trim()||null,phone:$('sPhone').value.trim()||null,email:$('sEmail').value.trim()||null};
   if(!payload.name)return toast('Supplier name required',true);
@@ -213,7 +285,7 @@ async function bootstrapManager() {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
   $('tab-'+name).classList.add('active'); document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-  if(name==='stock')loadReorder(); if(name==='expenses')loadExpenses(); if(name==='cashup'){cashupPreview();loadCashups();} if(name==='reports')loadReports();
+  if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='cashup'){cashupPreview();loadCashups();} if(name==='reports')loadReports();
 }
 async function enterApp() {
   $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
@@ -233,5 +305,6 @@ $('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=renderPro
 $('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
 $('completeSaleBtn').onclick=completeSale;$('clearCartBtn').onclick=()=>{cart=[];renderCart();};
 $('saveProductBtn').onclick=saveProduct;$('saveSupplierBtn').onclick=saveSupplier;$('recordPurchaseBtn').onclick=recordPurchase;$('saveExpenseBtn').onclick=saveExpense;
+$('countProduct').onchange=updateCountPreview;$('countedQty').oninput=updateCountPreview;$('saveStockAdjustmentBtn').onclick=saveStockAdjustment;
 $('cDate').onchange=cashupPreview;$('openingFloat').oninput=cashupPreview;$('actualCash').oninput=cashupPreview;$('saveCashupBtn').onclick=saveCashup;$('refreshReportsBtn').onclick=loadReports;
 init();

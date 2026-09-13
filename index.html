@@ -38,6 +38,7 @@
       <button data-tab="sale" class="active">SALE</button>
       <button data-tab="products" data-manager>PRODUCTS & PRICING</button>
       <button data-tab="stock" data-manager>STOCK / PURCHASES</button>
+      <button data-tab="stockcount" data-manager>STOCK COUNT</button>
       <button data-tab="suppliers" data-manager>SUPPLIERS</button>
       <button data-tab="expenses">EXPENSES</button>
       <button data-tab="cashup">CASH-UP</button>
@@ -111,6 +112,31 @@
           <button id="recordPurchaseBtn" class="primary">Record Purchase</button>
           <h3>Reorder Monitor</h3>
           <div id="reorderTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+
+      <section id="tab-stockcount" class="tab">
+        <div class="panel">
+          <h2>Stock Count / Adjustment</h2>
+          <p class="muted">Use this after a physical stock count. Differences are recorded as stock adjustments, not fake purchases or sales.</p>
+          <div class="form-grid">
+            <select id="countProduct"></select>
+            <input id="systemQty" type="number" step="0.001" placeholder="System quantity" readonly>
+            <input id="countedQty" type="number" min="0" step="0.001" placeholder="Physical counted quantity">
+            <input id="countDifference" type="number" step="0.001" placeholder="Difference" readonly>
+            <select id="countReason">
+              <option value="Physical count adjustment">Physical count adjustment</option>
+              <option value="Damage / waste">Damage / waste</option>
+              <option value="Found stock">Found stock</option>
+              <option value="Data correction">Data correction</option>
+              <option value="Other">Other</option>
+            </select>
+            <input id="countNote" placeholder="Notes">
+          </div>
+          <button id="saveStockAdjustmentBtn" class="primary">Save Stock Adjustment</button>
+          <h3>Recent Adjustments</h3>
+          <div id="stockAdjustmentsTable" class="table-wrap"></div>
         </div>
       </section>
 

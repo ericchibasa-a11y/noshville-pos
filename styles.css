@@ -27,3 +27,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 .product-disabled{opacity:.62}
 .reorder-yes{display:inline-block;background:#fde2e1;color:#9b1c1c;border:1px solid #e7a3a0;border-radius:999px;padding:3px 8px;font-weight:800}
 .reorder-no{color:#166534;font-weight:700}
+
+/* V1.3 stock count */
+#tab-stockcount input[readonly]{background:#f3f4f6}
+#tab-stockcount .panel h3{margin-top:22px}

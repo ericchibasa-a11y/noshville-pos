@@ -70,3 +70,11 @@ For higher resilience in V2, move sale completion into one database RPC transact
 - SALE screen shows **OUT OF STOCK** at zero stock and blocks adding that product to the cart.
 - Reorder Monitor displays **YES** as a clear red warning.
 - No changes were made to the tested sales, weighted-average costing, cash-up, expense, or profit logic.
+
+## V1.3 Stock Count / Adjustment
+- Manager-only Stock Count screen.
+- Compare system quantity with a physical count.
+- Positive differences are recorded as `adjustment_in`.
+- Negative differences are recorded as `adjustment_out`.
+- Recent stock adjustments remain visible as an audit trail.
+- Tested V1.2 sales, weighted-average costing, cash-up, expense, profit and low-stock logic are unchanged.
