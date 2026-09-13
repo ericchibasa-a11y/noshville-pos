@@ -64,3 +64,9 @@ For higher resilience in V2, move sale completion into one database RPC transact
 - Sale search field width fixed.
 - Purchase cost logic changed to weighted-average inventory cost.
 - Run `fix_weighted_average_cost.sql` once in the Noshville Supabase SQL Editor.
+
+## V1.2 low-stock visibility
+- SALE screen shows a **LOW STOCK** badge when stock is at or below the reorder level.
+- SALE screen shows **OUT OF STOCK** at zero stock and blocks adding that product to the cart.
+- Reorder Monitor displays **YES** as a clear red warning.
+- No changes were made to the tested sales, weighted-average costing, cash-up, expense, or profit logic.

@@ -17,3 +17,13 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 .toolbar input{min-width:240px}.toolbar select{width:260px;flex:0 0 260px}
 .change-row{padding:8px 0;border-top:1px solid var(--line);font-size:18px}.change-row strong{color:var(--brand)}
 @media(max-width:650px){.toolbar{flex-direction:column}.toolbar input,.toolbar select{width:100%;min-width:0;flex:auto}}
+
+
+/* V1.2 low-stock visibility */
+.product-card{position:relative}
+.stock-badge{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:4px 7px;margin-bottom:7px}
+.stock-badge.low{background:#fff3cd;color:#8a5b00;border:1px solid #f0c36d}
+.stock-badge.out{background:#fde2e1;color:#9b1c1c;border:1px solid #e7a3a0}
+.product-disabled{opacity:.62}
+.reorder-yes{display:inline-block;background:#fde2e1;color:#9b1c1c;border:1px solid #e7a3a0;border-radius:999px;padding:3px 8px;font-weight:800}
+.reorder-no{color:#166534;font-weight:700}

@@ -39,7 +39,20 @@ function fillSelects() {
 function renderProductGrid() {
   const q=$('saleSearch').value.toLowerCase(), cat=$('categoryFilter').value;
   const list=products.filter(p=>(!q || `${p.name} ${p.brand||''} ${p.barcode||''}`.toLowerCase().includes(q)) && (!cat || p.category_id===cat));
-  $('productGrid').innerHTML=list.map(p=>`<div class="product-card" data-id="${p.id}"><strong>${p.name}</strong><div>${p.brand||''} ${p.pack_size||''}</div><div class="price">${money(p.selling_price)}</div><div class="stock">Stock: ${Number(p.stock_qty).toFixed(3)}</div></div>`).join('');
+  $('productGrid').innerHTML=list.map(p=>{
+    const stock=Number(p.stock_qty||0);
+    const reorder=Number(p.reorder_level||0);
+    const badge = stock<=0
+      ? '<div class="stock-badge out">OUT OF STOCK</div>'
+      : (p.track_stock && stock<=reorder ? '<div class="stock-badge low">LOW STOCK</div>' : '');
+    return `<div class="product-card ${stock<=0?'product-disabled':''}" data-id="${p.id}">
+      ${badge}
+      <strong>${p.name}</strong>
+      <div>${p.brand||''} ${p.pack_size||''}</div>
+      <div class="price">${money(p.selling_price)}</div>
+      <div class="stock">Stock: ${stock.toFixed(3)}</div>
+    </div>`;
+  }).join('');
   document.querySelectorAll('.product-card').forEach(el=>el.onclick=()=>addToCart(el.dataset.id));
 }
 
@@ -55,6 +68,7 @@ function updateTenderChange() {
 
 function addToCart(id) {
   const p=products.find(x=>x.id===id); if(!p) return;
+  if(p.track_stock && Number(p.stock_qty)<=0) return toast('This product is out of stock',true);
   const existing=cart.find(x=>x.id===id);
   const next=(existing?.qty||0)+1;
   if(p.track_stock && next>Number(p.stock_qty)) return toast('Not enough stock',true);
@@ -123,7 +137,17 @@ async function recordPurchase() {
 async function loadReorder() {
   const {data,error}=await sb.from('product_reorder_view').select('*').order('needs_reorder',{ascending:false}).order('name');
   if(error)return;
-  $('reorderTable').innerHTML=table(['Product','Stock','Reorder Level','Need Reorder','Suggested Qty','Est Cost'],(data||[]).map(x=>[x.name,Number(x.stock_qty).toFixed(3),Number(x.reorder_level).toFixed(3),x.needs_reorder?'YES':'No',Number(x.suggested_reorder_qty).toFixed(3),money(x.estimated_reorder_cost)]));
+  $('reorderTable').innerHTML=table(
+    ['Product','Stock','Reorder Level','Need Reorder','Suggested Qty','Est Cost'],
+    (data||[]).map(x=>[
+      x.name,
+      Number(x.stock_qty).toFixed(3),
+      Number(x.reorder_level).toFixed(3),
+      x.needs_reorder?'<span class="reorder-yes">YES</span>':'<span class="reorder-no">No</span>',
+      Number(x.suggested_reorder_qty).toFixed(3),
+      money(x.estimated_reorder_cost)
+    ])
+  );
 }
 async function saveExpense() {
   const amount=+$('eAmount').value;if(amount<=0)return toast('Enter expense amount',true);
