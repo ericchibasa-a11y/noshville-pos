@@ -38,11 +38,24 @@ async function refreshBase() {
 }
 function fillSelects() {
   $('categoryFilter').innerHTML='<option value="">All categories</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  renderCategoryButtons();
   $('pCategory').innerHTML='<option value="">Select category</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseSupplier').innerHTML='<option value="">Select supplier</option>'+suppliers.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('countProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   if($('barcodeProduct')) $('barcodeProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+}
+function renderCategoryButtons() {
+  const wrap=$('categoryButtons'); if(!wrap) return;
+  const active=$('categoryFilter').value;
+  wrap.innerHTML=[{id:'',name:'ALL ITEMS'},...categories].map(c=>
+    `<button type="button" class="category-btn ${active===c.id?'active':''}" data-category="${c.id}">${c.name}</button>`
+  ).join('');
+  wrap.querySelectorAll('[data-category]').forEach(btn=>btn.onclick=()=>{
+    $('categoryFilter').value=btn.dataset.category;
+    renderCategoryButtons();
+    renderProductGrid();
+  });
 }
 function renderProductGrid() {
   const q=$('saleSearch').value.toLowerCase(), cat=$('categoryFilter').value;
@@ -50,20 +63,26 @@ function renderProductGrid() {
     const aliases=productBarcodes.filter(b=>b.product_id===p.id).map(b=>b.barcode).join(' ');
     return (!q || `${p.name} ${p.brand||''} ${p.sku||''} ${p.barcode||''} ${aliases}`.toLowerCase().includes(q)) && (!cat || p.category_id===cat);
   });
+  const catName=cat ? (categories.find(c=>c.id===cat)?.name||'ITEMS') : 'ALL ITEMS';
+  if($('activeCategoryTitle')) $('activeCategoryTitle').textContent=catName.toUpperCase();
+  if($('visibleProductCount')) $('visibleProductCount').textContent=`${list.length} item${list.length===1?'':'s'}`;
+  if($('categoryButtons')) renderCategoryButtons();
   $('productGrid').innerHTML=list.map(p=>{
     const stock=Number(p.stock_qty||0);
     const reorder=Number(p.reorder_level||0);
     const badge = stock<=0
       ? '<div class="stock-badge out">OUT OF STOCK</div>'
       : (p.track_stock && stock<=reorder ? '<div class="stock-badge low">LOW STOCK</div>' : '');
+    const code=p.sku?`<div class="product-code">${p.sku}</div>`:'';
+    const detail=[p.brand||'',p.pack_size||''].filter(Boolean).join(' ');
     return `<div class="product-card ${stock<=0?'product-disabled':''}" data-id="${p.id}">
-      ${badge}
-      <strong>${p.name}</strong>
-      <div>${p.brand||''} ${p.pack_size||''}</div>
+      <div class="product-card-top">${code}${badge}</div>
+      <strong class="product-name">${p.name}</strong>
+      <div class="product-detail">${detail||'&nbsp;'}</div>
       <div class="price">${money(p.selling_price)}</div>
       <div class="stock">Stock: ${stock.toFixed(3)}</div>
     </div>`;
-  }).join('');
+  }).join('') || '<div class="empty-products">No products found in this category.</div>';
   document.querySelectorAll('.product-card').forEach(el=>el.onclick=()=>addToCart(el.dataset.id));
 }
 
@@ -426,7 +445,7 @@ $('loginBtn').onclick=async()=>{const {data,error}=await sb.auth.signInWithPassw
 $('bootstrapBtn').onclick=bootstrapManager;
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-$('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=renderProductGrid;$('discount').oninput=renderCart;
+$('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=()=>{renderCategoryButtons();renderProductGrid();};$('clearSaleSearchBtn').onclick=()=>{$('saleSearch').value='';renderProductGrid();$('saleSearch').focus();};$('discount').oninput=renderCart;
 $('saleBarcode').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();scanSaleBarcode();}});$('scanBarcodeBtn').onclick=scanSaleBarcode;
 $('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
 $('completeSaleBtn').onclick=completeSale;$('clearCartBtn').onclick=()=>{cart=[];renderCart();};

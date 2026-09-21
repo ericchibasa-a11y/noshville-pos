@@ -27,11 +27,26 @@
 
   <div id="appView" class="hidden">
     <header class="topbar">
-      <div>
-        <h1>Noshville Foods POS</h1>
-        <div id="userInfo" class="small"></div>
+      <div class="topbar-strip">
+        <div class="live-status">
+          <span class="live-badge">NOSHVILLE LIVE POS</span>
+          <span class="live-text">ONLINE - shared database</span>
+        </div>
       </div>
-      <button id="logoutBtn">Sign out</button>
+      <div class="topbar-main">
+        <div class="brand-block">
+          <h1>NOSHVILLE FOODS — POS</h1>
+          <div class="brand-subline">
+            <span>info@giani.co.za</span>
+            <span class="divider">•</span>
+            <span>Retail & Spaza Sales</span>
+          </div>
+        </div>
+        <div class="session-block">
+          <div id="userInfo" class="small user-info-line"></div>
+          <button id="logoutBtn">LOGOUT</button>
+        </div>
+      </div>
     </header>
 
     <nav class="tabs">
@@ -58,15 +73,31 @@
               </div>
               <div class="small muted">USB/Bluetooth scanners that type the barcode and send Enter are supported.</div>
             </div>
-            <div class="toolbar">
-              <input id="saleSearch" placeholder="Search product, SKU or barcode..." />
-              <select id="categoryFilter"><option value="">All categories</option></select>
+            <div class="sale-tools">
+              <div class="sale-search-wrap">
+                <span class="sale-search-icon">⌕</span>
+                <input id="saleSearch" placeholder="Search products..." />
+              </div>
+              <button id="clearSaleSearchBtn" class="clear-search-btn" type="button">CLEAR</button>
+              <select id="categoryFilter" class="category-filter-fallback" aria-label="Category filter"><option value="">All categories</option></select>
+            </div>
+            <div id="categoryButtons" class="category-buttons" aria-label="Product categories"></div>
+            <div class="product-section-title">
+              <span id="activeCategoryTitle">ALL ITEMS</span>
+              <span id="visibleProductCount" class="product-count"></span>
             </div>
             <div id="productGrid" class="product-grid"></div>
           </div>
-          <div class="panel sticky">
-            <h2>Current Order</h2>
-            <div id="cart"></div>
+          <div class="panel sticky order-panel">
+            <div class="order-title-row">
+              <div>
+                <h2>Current Order</h2>
+                <div class="small muted">Noshville Foods</div>
+              </div>
+              <span class="order-status">OPEN</span>
+            </div>
+            <div class="cart-head"><span>Item</span><span>Qty</span><span>Total</span><span></span></div>
+            <div id="cart" class="cart-body"></div>
             <div class="totals">
               <div><span>Subtotal</span><strong id="subtotal">R0.00</strong></div>
               <div><span>Discount</span><input id="discount" type="number" min="0" step="0.01" value="0"/></div>
