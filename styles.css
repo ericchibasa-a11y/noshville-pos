@@ -38,3 +38,15 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 .staff-actions{display:flex;gap:6px;flex-wrap:wrap}
 .staff-actions button{padding:7px 9px;font-size:12px}
 #createStaffBtn:disabled{opacity:.55;cursor:not-allowed}
+
+
+/* V1.5 Barcode scanner & label management */
+.scanner-panel{background:#eef8f2;border:1px solid #b7ddc6;border-radius:10px;padding:12px;margin-bottom:12px}
+.scanner-panel label{display:block;font-weight:800;margin-bottom:6px;color:var(--brand)}
+.scanner-row{display:grid;grid-template-columns:1fr auto;gap:8px}
+.scanner-row input{font-size:18px;font-weight:700;letter-spacing:.5px}
+.barcode-admin{margin-top:24px;padding-top:18px;border-top:2px solid var(--line)}
+.barcode-actions{margin-bottom:8px;flex-wrap:wrap}
+.barcode-code{font-family:Consolas,monospace;font-weight:700}
+.barcode-pill{display:inline-block;padding:3px 7px;border-radius:999px;background:#eef2f6;font-size:11px;font-weight:700}
+@media(max-width:650px){.scanner-row{grid-template-columns:1fr}.scanner-row button{width:100%}}

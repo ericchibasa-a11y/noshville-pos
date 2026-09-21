@@ -3,7 +3,7 @@ const SUPABASE_URL = "https://gknaqtvkqjwqwkovmajg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_P9Tl9D6E9pEZKZVqDWoKFw_NS1C0qR1";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let session = null, profile = null, products = [], categories = [], suppliers = [], cart = [];
+let session = null, profile = null, products = [], categories = [], suppliers = [], productBarcodes = [], cart = [];
 
 const $ = id => document.getElementById(id);
 const money = n => 'R' + Number(n||0).toFixed(2);
@@ -27,13 +27,14 @@ async function loadProfile() {
   document.querySelectorAll('[data-manager]').forEach(el=>el.classList.toggle('hidden',profile.role!=='manager'));
 }
 async function refreshBase() {
-  const [c,p,s] = await Promise.all([
+  const [c,p,s,b] = await Promise.all([
     sb.from('categories').select('*').eq('is_active',true).order('sort_order'),
     sb.from('products').select('*').eq('is_active',true).order('name'),
-    sb.from('suppliers').select('*').eq('is_active',true).order('name')
+    sb.from('suppliers').select('*').eq('is_active',true).order('name'),
+    sb.from('product_barcodes').select('*').order('created_at')
   ]);
-  categories=c.data||[]; products=p.data||[]; suppliers=s.data||[];
-  renderProductGrid(); fillSelects(); renderProductsTable(); renderSuppliersTable();
+  categories=c.data||[]; products=p.data||[]; suppliers=s.data||[]; productBarcodes=b.data||[];
+  renderProductGrid(); fillSelects(); renderProductsTable(); renderSuppliersTable(); renderBarcodeTable();
 }
 function fillSelects() {
   $('categoryFilter').innerHTML='<option value="">All categories</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
@@ -41,10 +42,14 @@ function fillSelects() {
   $('purchaseSupplier').innerHTML='<option value="">Select supplier</option>'+suppliers.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('purchaseProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   $('countProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  if($('barcodeProduct')) $('barcodeProduct').innerHTML='<option value="">Select product</option>'+products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
 }
 function renderProductGrid() {
   const q=$('saleSearch').value.toLowerCase(), cat=$('categoryFilter').value;
-  const list=products.filter(p=>(!q || `${p.name} ${p.brand||''} ${p.barcode||''}`.toLowerCase().includes(q)) && (!cat || p.category_id===cat));
+  const list=products.filter(p=>{
+    const aliases=productBarcodes.filter(b=>b.product_id===p.id).map(b=>b.barcode).join(' ');
+    return (!q || `${p.name} ${p.brand||''} ${p.sku||''} ${p.barcode||''} ${aliases}`.toLowerCase().includes(q)) && (!cat || p.category_id===cat);
+  });
   $('productGrid').innerHTML=list.map(p=>{
     const stock=Number(p.stock_qty||0);
     const reorder=Number(p.reorder_level||0);
@@ -80,6 +85,77 @@ function addToCart(id) {
   if(p.track_stock && next>Number(p.stock_qty)) return toast('Not enough stock',true);
   if(existing) existing.qty=next; else cart.push({...p,qty:1});
   renderCart();
+}
+
+function cleanBarcode(value){ return String(value||'').trim(); }
+function productForBarcode(code){
+  code=cleanBarcode(code);
+  if(!code) return null;
+  const alias=productBarcodes.find(b=>b.barcode===code);
+  if(alias) return products.find(p=>p.id===alias.product_id)||null;
+  return products.find(p=>cleanBarcode(p.barcode)===code)||null;
+}
+function scanSaleBarcode(){
+  const input=$('saleBarcode');
+  const code=cleanBarcode(input.value);
+  if(!code) return;
+  const p=productForBarcode(code);
+  if(!p){ toast(`Barcode not found: ${code}`,true); input.select(); return; }
+  addToCart(p.id);
+  input.value='';
+  input.focus();
+  toast(`${p.name} added`);
+}
+function internalBarcodeForProduct(p){
+  const seed=(p.sku||p.id.slice(0,12)).replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+  return `NSH-${seed}`;
+}
+async function linkBarcode(){
+  if(profile?.role!=='manager') return toast('Manager access required',true);
+  const product_id=$('barcodeProduct').value;
+  const barcode=cleanBarcode($('barcodeValue').value);
+  const barcode_type=$('barcodeType').value;
+  if(!product_id) return toast('Select a product',true);
+  if(!barcode) return toast('Scan or enter a barcode',true);
+  const {error}=await sb.from('product_barcodes').insert({product_id,barcode,barcode_type,is_internal:barcode_type==='CODE128',created_by:session.user.id});
+  if(error) return toast(error.message,true);
+  $('barcodeValue').value='';
+  toast('Barcode linked');
+  await refreshBase();
+}
+async function generateBarcode(){
+  if(profile?.role!=='manager') return toast('Manager access required',true);
+  const product_id=$('barcodeProduct').value;
+  const p=products.find(x=>x.id===product_id);
+  if(!p) return toast('Select a product',true);
+  const barcode=internalBarcodeForProduct(p);
+  const existing=productBarcodes.find(b=>b.barcode===barcode);
+  if(existing){ $('barcodeValue').value=barcode; return toast('Noshville barcode already exists for this product'); }
+  const {error}=await sb.from('product_barcodes').insert({product_id,barcode,barcode_type:'CODE128',is_internal:true,created_by:session.user.id});
+  if(error) return toast(error.message,true);
+  $('barcodeValue').value=barcode;
+  toast('Noshville barcode generated');
+  await refreshBase();
+}
+function renderBarcodeTable(){
+  const el=$('barcodeTable'); if(!el || profile?.role!=='manager') return;
+  const rows=[];
+  products.forEach(p=>{
+    const bars=productBarcodes.filter(b=>b.product_id===p.id);
+    bars.forEach(b=>rows.push([p.name,`<span class="barcode-code">${b.barcode}</span>`,`<span class="barcode-pill">${b.is_internal?'Noshville':'Manufacturer'}</span>`,`<button data-print-barcode="${b.id}">Print Label</button>`]));
+  });
+  el.innerHTML=table(['Product','Barcode','Type','Label'],rows);
+  el.querySelectorAll('[data-print-barcode]').forEach(btn=>btn.onclick=()=>printBarcodeLabel(btn.dataset.printBarcode));
+}
+function printBarcodeLabel(barcodeId){
+  const b=productBarcodes.find(x=>x.id===barcodeId); if(!b) return;
+  const p=products.find(x=>x.id===b.product_id); if(!p) return;
+  const w=window.open('','_blank','width=520,height=420');
+  if(!w) return toast('Please allow pop-ups to print barcode labels',true);
+  const title=(p.name||'Noshville Product').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const code=b.barcode.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Barcode Label</title><script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script><style>@page{size:60mm 35mm;margin:3mm}body{font-family:Arial;text-align:center;margin:0;padding:6px}.name{font-weight:700;font-size:12px;margin-bottom:2px}.price{font-size:13px;margin-top:2px}svg{max-width:100%;height:auto}</style></head><body><div class="name">${title}</div><svg id="bc"></svg><div class="price">${money(p.selling_price)}</div><script>JsBarcode('#bc',${code},{format:'CODE128',displayValue:true,fontSize:13,height:48,margin:2});setTimeout(()=>window.print(),350);<\/script></body></html>`);
+  w.document.close();
 }
 function renderCart() {
   $('cart').innerHTML=cart.map((x,i)=>`<div class="cart-row"><div>${x.name}</div><input type="number" min="0.001" step="0.001" value="${x.qty}" data-q="${i}"><div>${money(x.qty*x.selling_price)}</div><button data-r="${i}">×</button></div>`).join('') || '<p class="muted">No items yet</p>';
@@ -335,11 +411,11 @@ async function bootstrapManager() {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
   $('tab-'+name).classList.add('active'); document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-  if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='cashup'){cashupPreview();loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
+  if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='cashup'){cashupPreview();loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
 }
 async function enterApp() {
   $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
-  try{await loadProfile();await refreshBase();}catch(e){toast(e.message,true)}
+  try{await loadProfile();await refreshBase();setTimeout(()=>$('saleBarcode')?.focus(),100);}catch(e){toast(e.message,true)}
 }
 async function init() {
   ['purchaseDate','eDate','cDate','reportFrom','reportTo'].forEach(id=>$(id).value=today());
@@ -351,9 +427,11 @@ $('bootstrapBtn').onclick=bootstrapManager;
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 $('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=renderProductGrid;$('discount').oninput=renderCart;
+$('saleBarcode').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();scanSaleBarcode();}});$('scanBarcodeBtn').onclick=scanSaleBarcode;
 $('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
 $('completeSaleBtn').onclick=completeSale;$('clearCartBtn').onclick=()=>{cart=[];renderCart();};
 $('saveProductBtn').onclick=saveProduct;$('saveSupplierBtn').onclick=saveSupplier;$('recordPurchaseBtn').onclick=recordPurchase;$('saveExpenseBtn').onclick=saveExpense;
+$('barcodeValue').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();linkBarcode();}});$('linkBarcodeBtn').onclick=linkBarcode;$('generateBarcodeBtn').onclick=generateBarcode;
 $('countProduct').onchange=updateCountPreview;$('countedQty').oninput=updateCountPreview;$('saveStockAdjustmentBtn').onclick=saveStockAdjustment;
 $('createStaffBtn').onclick=createStaff;
 $('cDate').onchange=cashupPreview;$('openingFloat').oninput=cashupPreview;$('actualCash').oninput=cashupPreview;$('saveCashupBtn').onclick=saveCashup;$('refreshReportsBtn').onclick=loadReports;

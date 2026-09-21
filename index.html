@@ -6,6 +6,7 @@
   <title>Noshville Foods POS</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
   <div id="toast"></div>
@@ -49,8 +50,16 @@
       <section id="tab-sale" class="tab active">
         <div class="grid two">
           <div>
+            <div class="scanner-panel">
+              <label for="saleBarcode">Scan Barcode</label>
+              <div class="scanner-row">
+                <input id="saleBarcode" inputmode="numeric" autocomplete="off" placeholder="Scan item barcode and press Enter" />
+                <button id="scanBarcodeBtn" class="primary">Add Scanned Item</button>
+              </div>
+              <div class="small muted">USB/Bluetooth scanners that type the barcode and send Enter are supported.</div>
+            </div>
             <div class="toolbar">
-              <input id="saleSearch" placeholder="Search product..." />
+              <input id="saleSearch" placeholder="Search product, SKU or barcode..." />
               <select id="categoryFilter"><option value="">All categories</option></select>
             </div>
             <div id="productGrid" class="product-grid"></div>
@@ -95,6 +104,24 @@
           </div>
           <button id="saveProductBtn" class="primary">Add Product</button>
           <div id="productsTable" class="table-wrap"></div>
+
+          <div class="barcode-admin">
+            <h3>Barcode Management</h3>
+            <p class="muted">Link manufacturer barcodes, generate Noshville Code 128 barcodes, and print labels. One product can have more than one barcode.</p>
+            <div class="form-grid">
+              <select id="barcodeProduct"><option value="">Select product</option></select>
+              <input id="barcodeValue" autocomplete="off" placeholder="Scan or enter barcode">
+              <select id="barcodeType">
+                <option value="MANUFACTURER">Manufacturer barcode</option>
+                <option value="CODE128">Noshville Code 128</option>
+              </select>
+            </div>
+            <div class="row gap barcode-actions">
+              <button id="linkBarcodeBtn" class="primary">Link Barcode</button>
+              <button id="generateBarcodeBtn">Generate Noshville Barcode</button>
+            </div>
+            <div id="barcodeTable" class="table-wrap"></div>
+          </div>
         </div>
       </section>
 
