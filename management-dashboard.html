@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Noshville Foods — Management Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{background:#f4f6f8}.dash-shell{max-width:1600px;margin:0 auto}.dash-head{background:linear-gradient(180deg,#071325,#0b1a31);color:#fff;padding:18px 22px}.dash-head-row{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.dash-head h1{margin:0;font-size:28px}.dash-head p{margin:5px 0 0;color:#d4deec}.dash-actions{display:flex;gap:8px;flex-wrap:wrap}.dash-actions a,.dash-actions button{background:#fff;color:#111827;text-decoration:none;border:1px solid #fff;border-radius:9px;padding:10px 14px;font-weight:800}.dash-main{padding:14px 16px 30px}.filter-card{background:#fff;border:1px solid #d9dee5;border-radius:10px;padding:12px;margin-bottom:12px}.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;align-items:end}.quick-ranges{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.quick-ranges button{font-weight:800}.report-section{background:#fff;border:1px solid #d9dee5;border-radius:10px;padding:14px;margin-top:12px}.report-section h2{margin:0 0 10px;font-size:20px}.report-section h3{margin:18px 0 8px}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:9px}.metric{background:#fff;border:1px solid #d9dee5;border-radius:9px;padding:12px}.metric span{display:block;color:#6b7280;font-size:12px;font-weight:700}.metric strong{display:block;font-size:22px;margin-top:4px}.metric.good strong{color:#166534}.metric.bad strong{color:#991b1b}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pill{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800}.pill.warn{background:#fff3cd;color:#8a5b00}.pill.danger{background:#fde2e1;color:#991b1b}.pill.ok{background:#dcfce7;color:#166534}.section-note{font-size:12px;color:#6b7280;margin-top:-4px;margin-bottom:9px}.dash-empty{padding:20px;color:#6b7280;text-align:center;border:1px dashed #cbd5e1;border-radius:8px}.loading{opacity:.6;pointer-events:none}.tab-nav{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.tab-nav button{font-weight:800}.tab-nav button.active{background:#111827;color:#fff}.dash-view{display:none}.dash-view.active{display:block}.right{text-align:right}.nowrap{white-space:nowrap}@media(max-width:900px){.two-col{grid-template-columns:1fr}}@media print{.dash-actions,.filter-card,.tab-nav,#toast{display:none!important}.dash-head{background:#fff!important;color:#000;padding:0 0 12px}.dash-head p{color:#444}.dash-main{padding:0}.report-section{break-inside:avoid;border-color:#bbb}.dash-view{display:block!important}}
+  </style>
+</head>
+<body>
+  <div id="toast"></div>
+  <div id="authGate" class="auth-shell">
+    <div class="auth-card"><h2>Checking access…</h2><p class="muted">Please wait while Noshville verifies your manager session.</p></div>
+  </div>
+
+  <div id="dashboard" class="dash-shell hidden">
+    <header class="dash-head">
+      <div class="dash-head-row">
+        <div><h1>NOSHVILLE FOODS — MANAGEMENT DASHBOARD</h1><p id="dashUser">Sales, stock, profitability, cash-up and purchasing reports</p></div>
+        <div class="dash-actions"><a href="index.html">← Back to POS</a><button id="printBtn">Print</button><button id="csvBtn">Export Item Performance CSV</button></div>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <div class="filter-card">
+        <div class="filter-grid">
+          <label><strong>From</strong><input id="fromDate" type="date"></label>
+          <label><strong>To</strong><input id="toDate" type="date"></label>
+          <button id="refreshBtn" class="primary">Refresh Dashboard</button>
+        </div>
+        <div class="quick-ranges">
+          <button data-range="today">Today</button><button data-range="yesterday">Yesterday</button><button data-range="week">This Week</button><button data-range="month">This Month</button><button data-range="all">All Available</button>
+        </div>
+      </div>
+
+      <div class="tab-nav">
+        <button class="active" data-view="overview">Overview</button>
+        <button data-view="sales">Sales & Products</button>
+        <button data-view="inventory">Inventory</button>
+        <button data-view="expenses">Expenses & P/L</button>
+        <button data-view="cashups">Cash-Ups</button>
+        <button data-view="purchases">Purchases</button>
+      </div>
+
+      <section id="view-overview" class="dash-view active">
+        <div id="overviewMetrics" class="metric-grid"></div>
+        <div class="two-col">
+          <div class="report-section"><h2>Payment Method Breakdown</h2><div id="paymentTable" class="table-wrap"></div></div>
+          <div class="report-section"><h2>Current Inventory Position</h2><div id="inventoryMetrics" class="metric-grid"></div></div>
+        </div>
+        <div class="report-section"><h2>Daily Sales & Profit</h2><div id="dailyTable" class="table-wrap"></div></div>
+      </section>
+
+      <section id="view-sales" class="dash-view">
+        <div class="two-col">
+          <div class="report-section"><h2>Top Selling Products</h2><p class="section-note">Ranked by quantity sold for the selected period.</p><div id="topItemsTable" class="table-wrap"></div></div>
+          <div class="report-section"><h2>Least Selling Active Products</h2><p class="section-note">Products with sales, ranked from lowest quantity sold.</p><div id="leastItemsTable" class="table-wrap"></div></div>
+        </div>
+        <div class="report-section"><h2>Zero Activity Review</h2><p class="section-note">Active products with no completed sales in the selected period.</p><div id="zeroItemsTable" class="table-wrap"></div></div>
+        <div class="report-section"><h2>Full Item Performance</h2><div id="itemPerformanceTable" class="table-wrap"></div></div>
+      </section>
+
+      <section id="view-inventory" class="dash-view">
+        <div id="stockMetrics" class="metric-grid"></div>
+        <div class="two-col">
+          <div class="report-section"><h2>Low / Out of Stock</h2><div id="lowStockTable" class="table-wrap"></div></div>
+          <div class="report-section"><h2>Highest Stock Value</h2><div id="stockValueTable" class="table-wrap"></div></div>
+        </div>
+        <div class="report-section"><h2>Stock Movement History</h2><p class="section-note">Opening stock, purchases, sales, count adjustments, returns and waste within the selected period.</p><div id="stockMovementTable" class="table-wrap"></div></div>
+      </section>
+
+      <section id="view-expenses" class="dash-view">
+        <div id="profitMetrics" class="metric-grid"></div>
+        <div class="two-col">
+          <div class="report-section"><h2>Expenses by Category</h2><div id="expenseCategoryTable" class="table-wrap"></div></div>
+          <div class="report-section"><h2>Expense Transactions</h2><div id="expenseTable" class="table-wrap"></div></div>
+        </div>
+      </section>
+
+      <section id="view-cashups" class="dash-view">
+        <div id="cashupMetrics" class="metric-grid"></div>
+        <div class="two-col">
+          <div class="report-section"><h2>Unclosed Cash-Ups</h2><p class="section-note">Dates with completed sales but no cash-up record.</p><div id="unclosedTable" class="table-wrap"></div></div>
+          <div class="report-section"><h2>Cash-Up History</h2><div id="cashupTable" class="table-wrap"></div></div>
+        </div>
+      </section>
+
+      <section id="view-purchases" class="dash-view">
+        <div id="purchaseMetrics" class="metric-grid"></div>
+        <div class="report-section"><h2>Stock Received / Purchases</h2><div id="purchaseTable" class="table-wrap"></div></div>
+        <div class="report-section"><h2>Purchase Item Detail</h2><div id="purchaseItemTable" class="table-wrap"></div></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="management-dashboard.js"></script>
+</body>
+</html>
