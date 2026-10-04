@@ -121,6 +121,40 @@
       <section id="tab-products" class="tab">
         <div class="panel">
           <h2>Products & Pricing</h2>
+          <section class="pricing-calculator" aria-labelledby="pricingCalculatorTitle">
+            <div class="pricing-heading">
+              <div>
+                <h3 id="pricingCalculatorTitle">Selling Price Calculator</h3>
+                <p class="muted">Use the POS average cost or enter a supplier cost for this calculation. Compare it with the current selling price, then save the final price to this product.</p>
+              </div>
+              <label class="pricing-margin-control">Target gross margin (%)
+                <input id="pricingTargetMargin" type="number" min="1" max="90" step="1" value="25" inputmode="decimal">
+              </label>
+            </div>
+            <div class="pricing-form">
+              <label>Find a product
+                <input id="pricingSearch" type="search" placeholder="Search product, brand or SKU">
+              </label>
+              <label>Select product
+                <select id="pricingProduct"><option value="">Choose a product</option></select>
+              </label>
+              <label>Current buying cost (R)
+                <input id="pricingCost" type="number" min="0" step="0.01" placeholder="Enter cost">
+              </label>
+              <label>Current selling price to compare (R)
+                <input id="pricingSuggested" type="number" min="0" step="0.01" placeholder="Enter suggested price">
+              </label>
+            </div>
+            <div class="pricing-actions">
+              <button id="calculatePriceBtn" type="button" class="primary">Calculate Price</button>
+              <button id="applyPriceBtn" type="button" disabled>Save Final Price</button>
+              <span id="pricingCostNote" class="small muted">Selecting a product fills cost from its current POS average.</span>
+            </div>
+            <div id="pricingResult" class="pricing-result" aria-live="polite">
+              <span>Select a product and calculate a price.</span>
+            </div>
+          </section>
+          <h3>Add Product</h3>
           <div class="form-grid">
             <input id="pName" placeholder="Product name">
             <input id="pBrand" placeholder="Brand">

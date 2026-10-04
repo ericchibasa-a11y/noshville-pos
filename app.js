@@ -8,6 +8,9 @@ let session = null, profile = null, products = [], categories = [], suppliers = 
 const $ = id => document.getElementById(id);
 const money = n => 'R' + Number(n||0).toFixed(2);
 const today = () => new Date().toISOString().slice(0,10);
+function escapeHtml(value) { return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let latestPricingRecommendation = null;
+const pricingMarginStorageKey = 'noshville-pricing-target-margin-v1';
 function toast(msg, error=false) {
   const el=document.createElement('div'); el.className='toast'+(error?' error':''); el.textContent=msg; $('toast').appendChild(el);
   setTimeout(()=>el.remove(),4000);
@@ -34,7 +37,7 @@ async function refreshBase() {
     sb.from('product_barcodes').select('*').order('created_at')
   ]);
   categories=c.data||[]; products=p.data||[]; suppliers=s.data||[]; productBarcodes=b.data||[];
-  renderProductGrid(); fillSelects(); renderProductsTable(); renderSuppliersTable(); renderBarcodeTable();
+  renderProductGrid(); fillSelects(); renderProductsTable(); renderSuppliersTable(); renderBarcodeTable(); renderPricingProductOptions();
 }
 function fillSelects() {
   $('categoryFilter').innerHTML='<option value="">All categories</option>'+categories.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
@@ -204,6 +207,86 @@ async function completeSale() {
 function renderProductsTable() {
   if(profile?.role!=='manager') return;
   $('productsTable').innerHTML=table(['Product','Brand','Cost','Sell','Stock','Reorder'],products.map(p=>[p.name,p.brand||'',money(p.cost_price),money(p.selling_price),Number(p.stock_qty).toFixed(3),Number(p.reorder_level).toFixed(3)]));
+}
+function renderPricingProductOptions(preferredId) {
+  const select=$('pricingProduct'); if(!select) return;
+  const selectedId=preferredId||select.value;
+  const query=($('pricingSearch')?.value||'').trim().toLowerCase();
+  const matches=products.filter(p=>!query||`${p.name} ${p.brand||''} ${p.sku||''} ${p.pack_size||''}`.toLowerCase().includes(query));
+  select.innerHTML='<option value="">Choose a product</option>'+matches.map(p=>{
+    const details=[p.brand,p.pack_size,p.sku].filter(Boolean).join(' • ');
+    const label=details?`${p.name} — ${details}`:p.name;
+    return `<option value="${escapeHtml(p.id)}">${escapeHtml(label)}</option>`;
+  }).join('');
+  if(matches.some(p=>p.id===selectedId)) select.value=selectedId;
+  else select.value='';
+  if(selectedId&&select.value!==selectedId) resetPricingCalculator('Search and select a product to calculate a price.');
+}
+function resetPricingCalculator(message='Select a product and calculate a price.') {
+  latestPricingRecommendation=null;
+  $('applyPriceBtn').disabled=true;
+  $('pricingResult').textContent=message;
+}
+function loadPricingProduct() {
+  const p=products.find(x=>x.id===$('pricingProduct').value);
+  latestPricingRecommendation=null;
+  $('applyPriceBtn').disabled=true;
+  if(!p){
+    $('pricingCost').value='';
+    $('pricingSuggested').value='';
+    $('pricingCostNote').textContent='Selecting a product fills cost from its current POS average.';
+    $('pricingResult').textContent='Select a product and calculate a price.';
+    return;
+  }
+  $('pricingCost').value=Number(p.cost_price||0).toFixed(2);
+  $('pricingSuggested').value=Number(p.selling_price||0).toFixed(2);
+  $('pricingCostNote').textContent=`POS average cost: ${money(p.cost_price)}. You can enter a supplier quote for this calculation.`;
+  $('pricingResult').textContent='Review the buying cost, suggested price and target margin, then calculate.';
+}
+function calculateRecommendedPrice() {
+  const id=$('pricingProduct').value;
+  const p=products.find(x=>x.id===id);
+  const cost=Number($('pricingCost').value);
+  const suggested=Number($('pricingSuggested').value);
+  const marginPercent=Number($('pricingTargetMargin').value);
+  if(!p) return toast('Select a product first',true);
+  if(!Number.isFinite(cost)||cost<=0) return toast('Enter a buying cost greater than zero',true);
+  if(!Number.isFinite(suggested)||suggested<0) return toast('Enter a suggested selling price of zero or more',true);
+  if(!Number.isFinite(marginPercent)||marginPercent<=0||marginPercent>=90) return toast('Target gross margin must be between 1% and 89%',true);
+  const marginPrice=Math.ceil((cost/(1-marginPercent/100))-1e-9);
+  const finalPrice=Math.max(suggested,marginPrice);
+  const grossProfit=finalPrice-cost;
+  const finalMargin=finalPrice>0?grossProfit/finalPrice:0;
+  const change=finalPrice-suggested;
+  latestPricingRecommendation={productId:id,productName:p.name,finalPrice,cost,suggested,marginPercent,change,grossProfit,finalMargin};
+  $('applyPriceBtn').disabled=false;
+  const note=change>0
+    ? `Recommended price is ${money(change)} above the comparison price to meet the target margin.`
+    : 'The comparison price already meets or exceeds the target margin.';
+  $('pricingResult').innerHTML=`<div class="pricing-result-grid">
+    <div class="pricing-result-cell"><span>Price at target margin</span><strong>${money(marginPrice)}</strong></div>
+    <div class="pricing-result-cell"><span>Final selling price</span><strong>${money(finalPrice)}</strong></div>
+    <div class="pricing-result-cell"><span>Gross profit per pack</span><strong>${money(grossProfit)}</strong></div>
+    <div class="pricing-result-cell"><span>Final gross margin</span><strong>${(finalMargin*100).toFixed(1)}%</strong></div>
+  </div><p class="pricing-result-note">${note} Saving updates only this product's selling price.</p>`;
+}
+async function applyPricingRecommendation() {
+  const recommendation=latestPricingRecommendation;
+  if(profile?.role!=='manager') return toast('Manager access is required to change prices',true);
+  if(!recommendation) return toast('Calculate a price first',true);
+  $('applyPriceBtn').disabled=true;
+  const {data,error}=await sb.from('products')
+    .update({selling_price:recommendation.finalPrice})
+    .eq('id',recommendation.productId)
+    .select('id,selling_price')
+    .single();
+  if(error){$('applyPriceBtn').disabled=false;return toast(error.message,true);}
+  if(!data){$('applyPriceBtn').disabled=false;return toast('Price was not saved. Refresh the product list and try again.',true);}
+  const savedId=recommendation.productId;
+  await refreshBase();
+  $('pricingProduct').value=savedId;
+  loadPricingProduct();
+  toast(`Saved ${recommendation.productName} at ${money(data.selling_price)}`);
 }
 async function saveProduct() {
   const payload={
@@ -450,6 +533,14 @@ $('saleBarcode').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDef
 $('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
 $('completeSaleBtn').onclick=completeSale;$('clearCartBtn').onclick=()=>{cart=[];renderCart();};
 $('saveProductBtn').onclick=saveProduct;$('saveSupplierBtn').onclick=saveSupplier;$('recordPurchaseBtn').onclick=recordPurchase;$('saveExpenseBtn').onclick=saveExpense;
+$('pricingSearch').oninput=()=>{const oldId=$('pricingProduct').value;renderPricingProductOptions();if(oldId&&!$('pricingProduct').value)loadPricingProduct();};
+$('pricingProduct').onchange=loadPricingProduct;
+$('pricingCost').oninput=()=>resetPricingCalculator('Buying cost changed. Calculate again to refresh the recommendation.');
+$('pricingSuggested').oninput=()=>resetPricingCalculator('Comparison price changed. Calculate again to refresh the recommendation.');
+$('pricingTargetMargin').oninput=()=>{localStorage.setItem(pricingMarginStorageKey,$('pricingTargetMargin').value);resetPricingCalculator('Target margin changed. Calculate again to refresh the recommendation.');};
+$('calculatePriceBtn').onclick=calculateRecommendedPrice;$('applyPriceBtn').onclick=applyPricingRecommendation;
+const savedPricingMargin=Number(localStorage.getItem(pricingMarginStorageKey));
+if(savedPricingMargin>0&&savedPricingMargin<90)$('pricingTargetMargin').value=savedPricingMargin;
 $('barcodeValue').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();linkBarcode();}});$('linkBarcodeBtn').onclick=linkBarcode;$('generateBarcodeBtn').onclick=generateBarcode;
 $('countProduct').onchange=updateCountPreview;$('countedQty').oninput=updateCountPreview;$('saveStockAdjustmentBtn').onclick=saveStockAdjustment;
 $('createStaffBtn').onclick=createStaff;
