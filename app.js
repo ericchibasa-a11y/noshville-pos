@@ -504,11 +504,11 @@ async function bootstrapManager() {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
   $('tab-'+name).classList.add('active'); document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-  if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='assets')loadAssets(); if(name==='funds')loadFunds(); if(name==='cashup'){cashupPreview().catch(e=>toast(e.message,true));loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
+  if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='assets')loadAssets(); if(name==='funds')loadFunds(); if(name==='banking')loadBanking(); if(name==='accounting')loadAccounting(); if(name==='cashup'){cashupPreview().catch(e=>toast(e.message,true));loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
 }
 async function enterApp() {
   $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
-  try{await loadProfile();await refreshBase();setTimeout(()=>$('saleBarcode')?.focus(),100);}catch(e){toast(e.message,true)}
+  try{await loadProfile();await refreshBase();const financeTab=location.hash?.slice(1);if(profile.role==='manager'&&['accounting','banking','assets','funds'].includes(financeTab))showTab(financeTab);else setTimeout(()=>$('saleBarcode')?.focus(),100);}catch(e){toast(e.message,true)}
 }
 async function init() {
   ['purchaseDate','eDate','cDate','reportFrom','reportTo'].forEach(id=>$(id).value=today());

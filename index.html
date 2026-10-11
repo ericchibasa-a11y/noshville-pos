@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Noshville Foods POS</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20261011b" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
@@ -58,6 +58,8 @@
       <button data-tab="expenses">EXPENSES</button>
       <button data-tab="assets" data-manager>ASSETS</button>
       <button data-tab="funds" data-manager>CASH / BANK MOVEMENTS</button>
+      <button data-tab="banking" data-manager>BANK RECONCILIATION</button>
+      <button data-tab="accounting" data-manager>ACCOUNTING &amp; FINANCIAL REPORTS</button>
       <button data-tab="cashup">CASH-UP</button>
       <button data-tab="reports" data-manager>REPORTS</button>
       <a href="management-dashboard.html" data-manager style="white-space:nowrap;padding:11px 15px;border-radius:10px;font-weight:800;letter-spacing:.2px;background:#0b6b3a;color:#fff;text-decoration:none;border:1px solid #0b6b3a;display:inline-flex;align-items:center;">MANAGEMENT DASHBOARD</a>
@@ -282,6 +284,7 @@
           <button id="saveAssetBtn" class="primary">Record Asset</button>
           <div id="assetMetrics" class="summary-cards"></div>
           <div id="assetsTable" class="table-wrap"></div>
+<h3>Post Depreciation</h3><p class="muted">Enter a reviewed depreciation amount. Posting reduces net book value and charges depreciation expense in the ledger; it does not pay cash.</p><div class="form-grid"><label>Asset<select id="depAsset"></select></label><label>Posting date<input id="depDate" type="date"></label><label>Amount (R)<input id="depAmount" type="number" min="0.01" step="0.01"></label><label>Reference<input id="depReference" placeholder="e.g. DEP-2026-10"></label></div><button id="depPost" class="primary">Post Depreciation</button><div id="depHistory" class="table-wrap"></div>
         </div>
       </section>
       <section id="tab-funds" class="tab">
@@ -302,6 +305,34 @@
           <div id="fundsTable" class="table-wrap"></div>
         </div>
       </section>
+      <section id="tab-banking" class="tab"><div class="panel">
+<h2>Bank Statement &amp; Reconciliation</h2><p class="muted">One Noshville business bank account. EFT sales and bank expenses/movements post to its bank book. Card sales stay in Card Settlement Clearing until the actual settlement is recorded. Importing a statement does not create income or an expense.</p>
+<details id="bankSetup"><summary>Set up bank opening balance</summary><div class="form-grid">
+<label>Bank<input id="bBank" maxlength="100"></label><label>Account name<input id="bName" maxlength="150"></label><label>Last four digits<input id="bLast4" maxlength="4" inputmode="numeric"></label><label>Opening date<input id="bOpenDate" type="date"></label><label>Opening balance (R)<input id="bOpening" type="number" step="0.01" value="0"></label></div><button id="bSetupBtn" class="primary">Save Bank Opening</button><p class="muted small">Use the balance immediately before the first included bank transaction. The opening date must be on or before the first recorded bank transaction.</p></details>
+<div id="bankWho"></div><div class="form-grid"><label>Reconcile through<input id="bTo" type="date"></label></div><button id="bRefresh" class="primary">Sync &amp; Refresh Bank Book</button><div id="bankCards" class="summary-cards"></div>
+<h3>Capture a statement line</h3><div class="form-grid" id="statementForm"><label>Date<input id="bsDate" type="date"></label><label>Description<input id="bsDescription"></label><label>Reference<input id="bsReference"></label><label>Money in (R)<input id="bsIn" type="number" min="0" step="0.01" value="0"></label><label>Money out (R)<input id="bsOut" type="number" min="0" step="0.01" value="0"></label><label>Statement balance (optional)<input id="bsBalance" type="number" step="0.01"></label></div><button id="bsSave" class="primary">Record Statement Line</button>
+<div class="form-grid"><label>CSV bank statement<input id="bsCsv" type="file" accept=".csv,text/csv"></label></div><button id="bsPreview">Preview CSV</button><button id="bsImport" class="primary" disabled>Import Reviewed CSV</button><p class="muted small">Headings: Date (YYYY-MM-DD), Description, Debit, Credit; optional Reference and Balance. The same file cannot be imported twice.</p><div id="csvPreview" class="table-wrap"></div>
+<h3>Record bank book transactions</h3><p>Use Expenses, Assets or Cash / Bank Movements for those transactions. For card settlements and bank-only adjustments, use the balanced Journal form in Accounting.</p><button id="goBankJournal">Open Journal Form</button>
+<h3>Match statement to bank book</h3><div class="form-grid"><label>Unmatched statement<select id="bStatement"></select></label><label>Unmatched bank book line<select id="bBook"></select></label></div><button id="bMatch" class="primary">Match Selected Lines</button><p class="muted small">Select the actual corresponding entry. Matching requires equal amounts and direction; it does not post another transaction.</p>
+<h3>Unmatched statement lines</h3><div id="statementTable" class="table-wrap"></div><h3>Unmatched bank book entries</h3><div id="bookTable" class="table-wrap"></div><h3>Matched audit trail</h3><div id="matchTable" class="table-wrap"></div><button id="printBank">Print / Save PDF</button>
+</div></section>
+<section id="tab-accounting" class="tab"><div class="panel">
+<h2>Accounting &amp; Financial Reporting</h2><p class="muted">Manager ledger, trial balance, draft financial statements and month-end controls, following Feasterville’s structure. Retail cost of sales uses the costs saved on each sale. Stock receipts debit inventory and credit suppliers; record their actual payments once in Cash / Bank Movements.</p>
+<div class="form-grid"><label>From<input id="acFrom" type="date"></label><label>To<input id="acTo" type="date"></label></div><button id="acSync" class="primary">Synchronise POS &amp; View Reports</button><button id="acView">View Posted Reports</button><button id="printAccounting">Print / Save PDF</button><p id="accountingStatus" role="status"></p>
+<div class="notice">Draft management reports. Opening till/inventory, creditors, debtors, loans, capital and historic payments must be captured and reconciled. Tax is shown only when posted by your accountant; no automatic tax calculation is applied. This is the same provisional basis used by Feasterville.</div>
+<div id="accountingCards" class="summary-cards"></div>
+<h3>Statement of Profit or Loss</h3><div id="accountingPL" class="table-wrap"></div>
+<h3>Statement of Financial Position — Posted Balances</h3><div id="accountingPosition" class="table-wrap"></div>
+<h3>Statement of Changes in Equity — Posted Balances</h3><div id="accountingEquity" class="table-wrap"></div><h3>Cash &amp; Bank Movement Schedule</h3><div id="accountingCash" class="table-wrap"></div><p class="muted small">A full statutory cash-flow statement remains pending opening balance and transaction classification review, as in Feasterville. This schedule shows recorded cash and bank movements.</p>
+<h3>Monthly Profit &amp; Loss Comparison</h3><div id="accountingMonthly" class="table-wrap"></div>
+<h3>Trial Balance — Cumulative through To date</h3><div id="accountingTB" class="table-wrap"></div>
+<h3>General Ledger — Selected period</h3><div id="accountingGL" class="table-wrap"></div>
+<h3>Source-to-ledger &amp; Readiness Review</h3><div id="accountingAudit" class="table-wrap"></div><p class="muted small">Stock count adjustments feed the ledger after a count is saved. Review zero-cost sales, historical stock/asset expenses, missing opening balances and unsettled card payments before relying on results.</p>
+<details><summary>Capture a balanced journal / opening balances</summary><p>Opening balances, other income, card settlement, bank charges, creditors, loans and accountant adjustments. Use the existing operational forms for till payments; a manual journal does not alter cash-up. Example card settlement: debit Business Bank for money received, debit Bank Charges for the fee, credit Card Settlement Clearing for the gross settlement.</p>
+<div class="form-grid" id="journalForm"><label>Date<input id="jDate" type="date"></label><label>Description<input id="jDescription"></label><label>Reference<input id="jReference"></label></div><div id="journalLines"></div><button id="jAdd">Add Line</button><button id="jSave" class="primary">Post Balanced Journal</button></details>
+<h3>Month-End Closure</h3><div class="form-grid"><label>Accounting month<input id="acMonth" type="month"></label><label>Review / reopening reason<textarea id="acNotes" placeholder="Review physical stock, cash-ups, bank, creditors and missing costs"></textarea></label></div><button id="acClose" class="primary">Close Completed Month</button><button id="acReopen">Reopen with Reason</button><div id="accountingPeriods" class="table-wrap"></div>
+<h3>Recent Manual Journals &amp; Reversals</h3><div id="manualJournals" class="table-wrap"></div>
+</div></section>
       <section id="tab-cashup" class="tab">
         <div class="panel">
           <h2>Cash-Up / Close Day</h2><p class="muted">Expected cash includes till contributions, drawings, asset and stock payments, and bank transfers. Complete all till entries before closing the day.</p>
@@ -355,8 +386,10 @@
   </div>
 
   <script src="finance-core.js?v=20261011"></script>
-  <script src="app.js?v=20261011"></script>
-  <script src="finance.js?v=20261011"></script>
+  <script src="app.js?v=20261011b"></script>
+  <script src="finance.js?v=20261011b"></script>
+  <script src="accounting-core.js?v=20261011b"></script>
+  <script src="accounting.js?v=20261011b"></script>
   <script src="stock-admin-enhancements.js"></script>
 </body>
 </html>

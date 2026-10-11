@@ -89,3 +89,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 #assetForm label,#fundForm label{display:block;min-width:0;font-size:14px;font-weight:700}
 #assetForm input,#assetForm select,#assetForm textarea,#fundForm input,#fundForm select{display:block;margin-top:6px;font-size:16px;font-weight:400}
 #saveAssetBtn:disabled,#saveFundBtn:disabled{opacity:.55;cursor:wait}
+.notice{padding:14px;background:#fff8df;border-left:4px solid #9aba4b;margin:14px 0}
+details{margin:18px 0;padding:14px;border:1px solid #d6ddd8;border-radius:10px}summary{font-weight:700;cursor:pointer}
+#journalLines .journal-row{padding:12px 0;border-bottom:1px solid #ddd}
+@media print{body[data-print-finance] header,body[data-print-finance] .tabs,body[data-print-finance] button,body[data-print-finance] input,body[data-print-finance] select,body[data-print-finance] textarea,body[data-print-finance] details{display:none!important}body[data-print-finance] .tab{display:none!important}body[data-print-finance="banking"] #tab-banking,body[data-print-finance="accounting"] #tab-accounting{display:block!important}body[data-print-finance] .table-wrap{overflow:visible}body[data-print-finance] .panel{box-shadow:none;border:0}body[data-print-finance] th{position:static}body[data-print-finance] tr{break-inside:avoid}}

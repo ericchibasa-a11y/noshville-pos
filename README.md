@@ -100,3 +100,17 @@ Cash-up uses opening float + cash sales - cash operating expenses + till funds i
 Manager-only finance tables have RLS and append-only records. Active staff receive only aggregate totals needed for cash-up. The totals RPC uses a guarded security-definer function solely to aggregate otherwise manager-only expenses and funding movements.
 
 Deployment requires the finance migration before the updated scripts. Business dates for cash-up are calculated in Africa/Johannesburg.
+
+## Accounting and bank reconciliation (11 October 2026)
+
+The manager's **Accounting & Financial Reports** and **Bank Reconciliation** follow Feasterville's accounting foundation: chart of accounts, balanced journal ledger, trial balance, source reconciliation, month closure/reopening with reasons, draft profit or loss, known financial position, changes in recorded equity, monthly comparison and printable reports. Assets also support depreciation and net book value. Posted depreciation cannot exceed cost; acquisition payment reversal is blocked once depreciation is posted.
+
+Use **Synchronise POS & View Reports** for new or corrected sources. Source signatures make repeat syncs idempotent. Corrections reverse and replace the former journal; original journals remain readable. Source corrections affecting a closed accounting month require reopening it. All finance writes use one private, guarded manager dispatcher; tables are read-only to authenticated clients with manager RLS. Salesperson sales continue to use the existing operational flow.
+
+Retail sale `line_cost` drives cost of sales. Stock receipts debit inventory / credit suppliers, including captured transport cost. Actual stock payments clear suppliers, never cost of sales. Opening stock, cash, outstanding suppliers, historic settled purchases, debts and capital must be reviewed and entered through opening journals; none is invented from today's quantities. Existing expenses remain operating expenses, with classification warnings in the audit review. Card receipts use settlement clearing; post net bank proceeds and bank fees against gross clearing through the balanced journal form. Manual journals do not change till cash-up; use the existing till expense/funding forms for cash movements.
+
+Bank reconciliation currently covers one Noshville business bank account, consistent with its generic bank funding source. Opening date cannot be later than the first recorded bank transaction. Statement imports have a preview, strict money/date validation and file-hash duplicate protection; imports do not post revenue or expenses. Manually match equal amounts/directions to actual ledger bank lines. The screen displays raw and adjusted differences, unmatched items and statement balance continuity warnings; a zero adjusted difference alone is not a completed reconciliation.
+
+Tax/VAT status is not copied from Feasterville. Tax is only included if posted by the accountant. Statutory cash-flow classification remains pending; the draft shows cash/bank movement schedules. Financial statements are provisional until openings, costs and bank records are complete, as in Feasterville. Multi-bank allocation and asset disposal journals require further work.
+
+Validation: `node tests/finance-calculations.cjs`, `node tests/accounting-calculations.cjs`, JS syntax checks, DOM rendering tests, database rollback integration tests (balanced postings, repeated sync, idempotent retries, depreciation limits, duplicate imports/matches, closure and manager-only access).
