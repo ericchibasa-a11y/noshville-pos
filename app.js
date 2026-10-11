@@ -405,7 +405,7 @@ async function loadReorder() {
   );
 }
 async function saveExpense() {
-  const amount=+$('eAmount').value;if(amount<=0)return toast('Enter expense amount',true);
+  const amount=+$('eAmount').value;if(!Number.isFinite(amount)||amount<=0)return toast('Enter expense amount',true);
   const payload={expense_date:$('eDate').value||today(),category:$('eCategory').value.trim(),description:$('eDescription').value.trim()||null,amount,payment_method:$('ePayment').value,created_by:session.user.id};
   if(!payload.category)return toast('Expense category required',true);
   const {error}=await sb.from('expenses').insert(payload);if(error)return toast(error.message,true);
@@ -418,34 +418,24 @@ async function loadExpenses() {
 }
 async function cashupPreview() {
   const d=$('cDate').value||today();
-  const start=d+'T00:00:00', end=d+'T23:59:59.999';
-  const [sales,exp]=await Promise.all([
-    sb.from('sales').select('payment_method,total_amount').gte('sale_date',start).lte('sale_date',end).eq('status','completed'),
-    sb.from('expenses').select('payment_method,amount').eq('expense_date',d)
-  ]);
-  const s=sales.data||[], e=exp.data||[];
-  const sums={cash:0,card:0,eft:0,other:0}; s.forEach(x=>sums[x.payment_method]=(sums[x.payment_method]||0)+Number(x.total_amount));
-  const cashExp=e.filter(x=>x.payment_method==='cash').reduce((a,x)=>a+Number(x.amount),0);
-  const opening=+$('openingFloat').value||0, expected=opening+sums.cash-cashExp;
-  const actualRaw=$('actualCash').value;
-  const hasActual=actualRaw!=='' && actualRaw!==null;
-  const actual=hasActual ? Number(actualRaw) : null;
-  const variance=hasActual ? actual-expected : null;
-  $('cashupPreview').innerHTML=[
-    ['Cash Sales',money(sums.cash)],['Card',money(sums.card)],['EFT',money(sums.eft)],['Cash Expenses',money(cashExp)],['Expected Cash',money(expected)],['Variance',hasActual?money(variance):'—']
-  ].map(x=>`<div class="summary-card"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
-  return {...sums,cashExp,opening,expected,actual,variance};
+  const {data:sums,error}=await sb.rpc('finance_cashup_totals',{p_date:d});
+  if(error){$('cashupPreview').textContent='Cash-up totals could not load: '+error.message;throw error;}
+  const opening=+$('openingFloat').value||0;
+  const expected=NoshvilleFinance.expected(opening,sums.cash,sums.cashExp,sums.fundIn,sums.fundOut);
+  const raw=$('actualCash').value,actual=raw===''?null:Number(raw),variance=actual===null?null:actual-expected;
+  $('cashupPreview').innerHTML=[['Cash Sales',money(sums.cash)],['Card',money(sums.card)],['EFT',money(sums.eft)],['Cash Expenses',money(sums.cashExp)],['Till Funds In',money(sums.fundIn)],['Till Funds Out',money(sums.fundOut)],['Expected Cash',money(expected)],['Variance',actual===null?'—':money(variance)]].map(x=>`<div class="summary-card"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
+  return {...sums,opening,expected,actual,variance};
 }
 async function saveCashup() {
-  const v=await cashupPreview(), d=$('cDate').value||today();
-  if(v.actual===null) return toast('Enter actual cash counted before saving cash-up',true);
-  const payload={cashup_date:d,cashier_id:session.user.id,opening_float:v.opening,cash_sales:v.cash,card_sales:v.card,eft_sales:v.eft,other_sales:v.other,cash_expenses:v.cashExp,expected_cash:v.expected,actual_cash:v.actual,variance:v.variance,notes:$('cashupNotes').value||null,created_by:session.user.id};
+  let v;try{v=await cashupPreview()}catch(e){return toast(e.message,true)}const d=$('cDate').value||today();
+  if(v.actual===null||!Number.isFinite(v.actual)||v.actual<0||!Number.isFinite(v.opening)||v.opening<0) return toast('Enter actual cash counted before saving cash-up',true);
+  const payload={cashup_date:d,cashier_id:session.user.id,opening_float:v.opening,cash_sales:v.cash,card_sales:v.card,eft_sales:v.eft,other_sales:v.other,cash_expenses:v.cashExp,fund_cash_in:v.fundIn,fund_cash_out:v.fundOut,expected_cash:v.expected,actual_cash:v.actual,variance:v.variance,notes:$('cashupNotes').value||null,created_by:session.user.id};
   const {error}=await sb.from('cashups').insert(payload);if(error)return toast(error.message,true);
   toast('Cash-up saved'); await loadCashups();
 }
 async function loadCashups() {
   const {data}=await sb.from('cashups').select('*').order('cashup_date',{ascending:false}).limit(50);
-  $('cashupsTable').innerHTML=table(['Date','Cash Sales','Expected','Actual','Variance'],(data||[]).map(x=>[x.cashup_date,money(x.cash_sales),money(x.expected_cash),money(x.actual_cash),money(x.variance)]));
+  $('cashupsTable').innerHTML=table(['Date','Cash Sales','Funds In','Funds Out','Expected','Actual','Variance'],(data||[]).map(x=>[x.cashup_date,money(x.cash_sales),money(x.fund_cash_in),money(x.fund_cash_out),money(x.expected_cash),money(x.actual_cash),money(x.variance)]));
 }
 async function loadReports() {
   if(profile?.role!=='manager') return;
@@ -457,9 +447,10 @@ async function loadReports() {
   ]);
   const sales=s.data||[], profit=p.data||[], expenses=(e.data||[]).reduce((a,x)=>a+Number(x.amount),0);
   const revenue=sales.reduce((a,x)=>a+Number(x.total_sales),0), gp=profit.reduce((a,x)=>a+Number(x.gross_profit),0), net=gp-expenses;
-  $('reportCards').innerHTML=[['Sales',money(revenue)],['Gross Profit',money(gp)],['Expenses',money(expenses)],['Net Profit',money(net)]].map(x=>`<div class="summary-card"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
+  $('reportCards').innerHTML=[['Sales',money(revenue)],['Gross Profit',money(gp)],['Expenses',money(expenses)],['Operating Profit',money(net)]].map(x=>`<div class="summary-card"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
   $('salesReport').innerHTML=table(['Date','Transactions','Sales','Cash','Card','EFT'],sales.map(x=>[x.sale_day,x.transactions,money(x.total_sales),money(x.cash_sales),money(x.card_sales),money(x.eft_sales)]));
   $('profitReport').innerHTML=table(['Date','Revenue','COGS','Gross Profit'],profit.map(x=>[x.sale_day,money(x.revenue),money(x.cost_of_goods),money(x.gross_profit)]));
+  await loadFinanceReport(from,to);
 }
 
 async function loadStaff() {
@@ -513,7 +504,7 @@ async function bootstrapManager() {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
   $('tab-'+name).classList.add('active'); document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-  if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='cashup'){cashupPreview();loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
+  if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='assets')loadAssets(); if(name==='funds')loadFunds(); if(name==='cashup'){cashupPreview().catch(e=>toast(e.message,true));loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
 }
 async function enterApp() {
   $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
@@ -544,5 +535,5 @@ if(savedPricingMargin>0&&savedPricingMargin<90)$('pricingTargetMargin').value=sa
 $('barcodeValue').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();linkBarcode();}});$('linkBarcodeBtn').onclick=linkBarcode;$('generateBarcodeBtn').onclick=generateBarcode;
 $('countProduct').onchange=updateCountPreview;$('countedQty').oninput=updateCountPreview;$('saveStockAdjustmentBtn').onclick=saveStockAdjustment;
 $('createStaffBtn').onclick=createStaff;
-$('cDate').onchange=cashupPreview;$('openingFloat').oninput=cashupPreview;$('actualCash').oninput=cashupPreview;$('saveCashupBtn').onclick=saveCashup;$('refreshReportsBtn').onclick=loadReports;
+const refreshCashup=()=>cashupPreview().catch(e=>toast(e.message,true));$('cDate').onchange=refreshCashup;$('openingFloat').oninput=refreshCashup;$('actualCash').oninput=refreshCashup;$('saveCashupBtn').onclick=saveCashup;$('refreshReportsBtn').onclick=loadReports;
 init();

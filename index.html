@@ -56,6 +56,8 @@
       <button data-tab="stockcount" data-manager>STOCK COUNT</button>
       <button data-tab="suppliers" data-manager>SUPPLIERS</button>
       <button data-tab="expenses">EXPENSES</button>
+      <button data-tab="assets" data-manager>ASSETS</button>
+      <button data-tab="funds" data-manager>CASH / BANK MOVEMENTS</button>
       <button data-tab="cashup">CASH-UP</button>
       <button data-tab="reports" data-manager>REPORTS</button>
       <a href="management-dashboard.html" data-manager style="white-space:nowrap;padding:11px 15px;border-radius:10px;font-weight:800;letter-spacing:.2px;background:#0b6b3a;color:#fff;text-decoration:none;border:1px solid #0b6b3a;display:inline-flex;align-items:center;">MANAGEMENT DASHBOARD</a>
@@ -248,7 +250,7 @@
 
       <section id="tab-expenses" class="tab">
         <div class="panel">
-          <h2>Expenses</h2>
+          <h2>Operating Expenses</h2><p class="muted">Rent, salaries, electricity and maintenance. Cash means paid from the till. Record equipment in Assets and owner withdrawals in Cash / Bank Movements.</p>
           <div class="form-grid">
             <input id="eDate" type="date">
             <input id="eCategory" placeholder="Expense category">
@@ -261,9 +263,48 @@
         </div>
       </section>
 
+      <section id="tab-assets" class="tab">
+        <div class="panel">
+          <h2>Asset Register</h2>
+          <p class="muted">Record equipment such as fridges, shelving and POS devices. A paid purchase records its funding movement automatically; do not also enter it in Expenses.</p>
+          <div class="form-grid" id="assetForm">
+            <label>Asset name<input id="aName" placeholder="e.g. Display fridge" maxlength="200"></label>
+            <label>Purchase date<input id="aDate" type="date"></label>
+            <label>Purchase cost (R)<input id="aCost" type="number" min="0.01" step="0.01"></label>
+            <label>Paid from<select id="aSource"><option value="till">Till cash / sales funds</option><option value="bank">Business bank</option><option value="owner">Owner paid supplier directly</option><option value="register_only">Register existing asset — no new payment</option></select></label>
+            <label>Serial number<input id="aSerial" maxlength="200"></label>
+            <label>Supplier<input id="aSupplier" maxlength="200"></label>
+            <label>Invoice / reference<input id="aReference" maxlength="200"></label>
+            <label>Location<input id="aLocation" placeholder="Noshville shop" maxlength="200"></label>
+            <label>Condition<select id="aCondition"><option>Good</option><option>Fair</option><option>Needs repair</option><option>Not in use</option></select></label>
+            <label>Notes<textarea id="aNotes" maxlength="1000"></textarea></label>
+          </div>
+          <button id="saveAssetBtn" class="primary">Record Asset</button>
+          <div id="assetMetrics" class="summary-cards"></div>
+          <div id="assetsTable" class="table-wrap"></div>
+        </div>
+      </section>
+      <section id="tab-funds" class="tab">
+        <div class="panel">
+          <h2>Cash / Bank Movements</h2>
+          <p class="muted">Record payments and funds already moved. Asset purchases are recorded in Assets. Stock payments here only record the funding; receive stock in Stock / Purchases.</p>
+          <div class="form-grid" id="fundForm">
+            <label>Payment date<input id="fDate" type="date"></label>
+            <label>Movement type<select id="fType"><option value="owner_contribution">Owner contribution</option><option value="owner_drawing">Owner drawing / personal use</option><option value="transfer">Till / bank transfer or deposit</option><option value="stock_payment">Payment for stock already received</option></select></label>
+            <label>From<select id="fFrom"></select></label>
+            <label>To<select id="fTo"></select></label>
+            <label>Amount (R)<input id="fAmount" type="number" min="0.01" step="0.01"></label>
+            <label>Description<input id="fDescription" maxlength="500" placeholder="What was this payment for?"></label>
+            <label>Receipt / reference<input id="fReference" maxlength="200"></label>
+          </div>
+          <button id="saveFundBtn" class="primary">Record Movement</button>
+          <p class="muted small">Enter till movements before cash-up. Corrections use a reversal on an open date and keep the original record.</p>
+          <div id="fundsTable" class="table-wrap"></div>
+        </div>
+      </section>
       <section id="tab-cashup" class="tab">
         <div class="panel">
-          <h2>Cash-Up / Close Day</h2>
+          <h2>Cash-Up / Close Day</h2><p class="muted">Expected cash includes till contributions, drawings, asset and stock payments, and bank transfers. Complete all till entries before closing the day.</p>
           <div class="form-grid">
             <input id="cDate" type="date">
             <input id="openingFloat" type="number" step="0.01" placeholder="Opening float">
@@ -278,13 +319,14 @@
 
       <section id="tab-reports" class="tab">
         <div class="panel">
-          <h2>Reports / Profit & Loss</h2>
+          <h2>Reports / Profit & Loss</h2><p class="muted">Operating profit before depreciation and tax. Asset purchases, owner funds and transfers appear separately below.</p>
           <div class="form-grid">
             <input id="reportFrom" type="date">
             <input id="reportTo" type="date">
           </div>
           <button id="refreshReportsBtn" class="primary">Refresh Reports</button>
           <div id="reportCards" class="summary-cards"></div>
+          <h3>Capital &amp; Funding Movements</h3><div id="financeReportCards" class="summary-cards"></div><div id="financeReport" class="table-wrap"></div><p class="muted small">Movement totals are not a bank balance or bank reconciliation. Sales settlements and opening bank balances are not included.</p>
           <h3>Daily Sales</h3>
           <div id="salesReport" class="table-wrap"></div>
           <h3>Daily Gross Profit</h3>
@@ -312,7 +354,9 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script src="finance-core.js?v=20261011"></script>
+  <script src="app.js?v=20261011"></script>
+  <script src="finance.js?v=20261011"></script>
   <script src="stock-admin-enhancements.js"></script>
 </body>
 </html>

@@ -36,6 +36,9 @@ function applyRange(kind){
   $('fromDate').value=from;$('toDate').value=to;loadDashboard();
 }
 
+async function allFinanceRows(name,from,to){
+ let out=[];for(let offset=0;;offset+=1000){let q=sb.from(name).select(name==='fund_movements'?'*,original:fund_movements!fund_movements_reversal_of_fkey(movement_type)':'*').order('id').range(offset,offset+999);if(from)q=q.gte('movement_date',from).lte('movement_date',to);const {data,error}=await q;if(error)throw error;out.push(...data);if(data.length<1000)return out;}
+}
 async function loadDashboard(){
   const from=$('fromDate').value||today(),to=$('toDate').value||today();
   if(from>to)return toast('From date cannot be after To date',true);
@@ -55,7 +58,8 @@ async function loadDashboard(){
     const saleItemsQ=saleIds.length?await sb.from('sale_items').select('sale_id,product_id,description,quantity,unit_cost,unit_price,line_total,line_cost').in('sale_id',saleIds):{data:[]};
     const purchaseItemsQ=purchaseIds.length?await sb.from('purchase_items').select('purchase_id,product_id,quantity,unit_cost,line_total,products(name)').in('purchase_id',purchaseIds):{data:[]};
     if(saleItemsQ.error)throw saleItemsQ.error;if(purchaseItemsQ.error)throw purchaseItemsQ.error;
-    renderAll({from,to,sales,items:saleItemsQ.data||[],expenses,products,cashups,purchases,purchaseItems:purchaseItemsQ.data||[],moves});
+    const [funds,assets,allFunds]=await Promise.all([allFinanceRows('fund_movements',from,to),allFinanceRows('business_assets'),allFinanceRows('fund_movements')]);
+    renderAll({from,to,funds,assets,allFunds,sales,items:saleItemsQ.data||[],expenses,products,cashups,purchases,purchaseItems:purchaseItemsQ.data||[],moves});
   }catch(e){console.error(e);toast('Dashboard could not load: '+e.message,true)}finally{setLoading(false)}
 }
 
@@ -64,8 +68,8 @@ function renderAll(d){
   const revenue=sales.reduce((a,x)=>a+num(x.total_amount),0);
   const cogs=items.reduce((a,x)=>a+num(x.line_cost||num(x.quantity)*num(x.unit_cost)),0);
   const gp=revenue-cogs,expenseTotal=expenses.reduce((a,x)=>a+num(x.amount),0),net=gp-expenseTotal,units=items.reduce((a,x)=>a+num(x.quantity),0);
-  $('overviewMetrics').innerHTML=[metric('Sales',money(revenue)),metric('Transactions',sales.length),metric('Units Sold',units.toFixed(0)),metric('COGS',money(cogs)),metric('Gross Profit',money(gp),gp>=0?'good':'bad'),metric('Gross Margin',pct(gp,revenue)),metric('Expenses',money(expenseTotal)),metric('Net Profit',money(net),net>=0?'good':'bad')].join('');
-  $('profitMetrics').innerHTML=[metric('Revenue',money(revenue)),metric('COGS',money(cogs)),metric('Gross Profit',money(gp),gp>=0?'good':'bad'),metric('Expenses',money(expenseTotal)),metric('Net Profit',money(net),net>=0?'good':'bad'),metric('Net Margin',pct(net,revenue))].join('');
+  $('overviewMetrics').innerHTML=[metric('Sales',money(revenue)),metric('Transactions',sales.length),metric('Units Sold',units.toFixed(0)),metric('COGS',money(cogs)),metric('Gross Profit',money(gp),gp>=0?'good':'bad'),metric('Gross Margin',pct(gp,revenue)),metric('Expenses',money(expenseTotal)),metric('Operating Profit',money(net),net>=0?'good':'bad')].join('');
+  $('profitMetrics').innerHTML=[metric('Revenue',money(revenue)),metric('COGS',money(cogs)),metric('Gross Profit',money(gp),gp>=0?'good':'bad'),metric('Expenses',money(expenseTotal)),metric('Operating Profit',money(net),net>=0?'good':'bad'),metric('Operating Margin',pct(net,revenue))].join('');
 
   const payments={cash:0,card:0,eft:0,other:0};sales.forEach(x=>payments[x.payment_method]=(payments[x.payment_method]||0)+num(x.total_amount));
   $('paymentTable').innerHTML=table(['Payment','Sales','% of Sales'],Object.entries(payments).map(([k,v])=>[esc(k.toUpperCase()),money(v),pct(v,revenue)]));
@@ -98,8 +102,13 @@ function renderAll(d){
   $('expenseCategoryTable').innerHTML=table(['Category','Amount','% of Expenses'],Object.entries(exBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[esc(k),money(v),pct(v,expenseTotal)]));
   $('expenseTable').innerHTML=table(['Date','Category','Description','Amount','Payment'],expenses.map(x=>[x.expense_date,esc(x.category),esc(x.description||''),money(x.amount),esc(x.payment_method)]));
 
+  const ft=NoshvilleFinance.totals(d.funds),cancelled=new Set(d.allFunds.filter(x=>x.movement_type==='reversal'&&x.asset_id).map(x=>x.asset_id));
+  const activeAssets=d.assets.filter(a=>!cancelled.has(a.id));
+  $('fundMetrics').innerHTML=[metric('Registered Assets',activeAssets.length),metric('Asset Purchase Cost',money(activeAssets.reduce((s,a)=>s+num(a.purchase_cost),0))),metric('Asset Payments',money(ft.assetPayments)),metric('Owner Contributions',money(ft.ownerContributions)),metric('Owner Drawings',money(ft.ownerDrawings)),metric('Stock Payments',money(ft.stockPayments)),metric('Till Funds In',money(ft.tillIn)),metric('Till Funds Out',money(ft.tillOut)),metric('Bank Movements In',money(ft.bankIn)),metric('Bank Movements Out',money(ft.bankOut))].join('');
+  $('dashAssets').innerHTML=table(['Purchased','Asset','Serial','Cost','Funding','Invoice','Location','Condition','Status'],d.assets.map(a=>[a.purchase_date,esc(a.asset_name),esc(a.serial_number||''),money(a.purchase_cost),esc(NoshvilleFinance.accounts[a.payment_source]),esc(a.invoice_reference||''),esc(a.location||''),esc(a.condition),cancelled.has(a.id)?'Payment reversed':'Registered']));
+  $('dashFunds').innerHTML=table(['Date','Type','From','To','Amount','Description','Reference'],d.funds.map(r=>[r.movement_date,esc(NoshvilleFinance.labels[r.movement_type]),esc(NoshvilleFinance.accounts[r.from_account]),esc(NoshvilleFinance.accounts[r.to_account]),money(r.amount),esc(r.description),esc(r.reference||'')]));
   const totalVariance=cashups.reduce((a,x)=>a+num(x.variance),0);$('cashupMetrics').innerHTML=[metric('Cash-Ups Closed',cashups.length),metric('Total Variance',money(totalVariance),Math.abs(totalVariance)>0.01?'bad':'good'),metric('Cash Sales',money(cashups.reduce((a,x)=>a+num(x.cash_sales),0))),metric('Actual Cash',money(cashups.reduce((a,x)=>a+num(x.actual_cash),0)))].join('');
-  $('cashupTable').innerHTML=table(['Date','Cash Sales','Card','EFT','Expected','Actual','Variance'],cashups.map(x=>[x.cashup_date,money(x.cash_sales),money(x.card_sales),money(x.eft_sales),money(x.expected_cash),money(x.actual_cash),money(x.variance)]));
+  $('cashupTable').innerHTML=table(['Date','Cash Sales','Card','EFT','Funds In','Funds Out','Expected','Actual','Variance'],cashups.map(x=>[x.cashup_date,money(x.cash_sales),money(x.card_sales),money(x.eft_sales),money(x.fund_cash_in),money(x.fund_cash_out),money(x.expected_cash),money(x.actual_cash),money(x.variance)]));
   const closedDates=new Set(cashups.map(x=>x.cashup_date)),salesByDate={};sales.forEach(s=>{const day=String(s.sale_date).slice(0,10);salesByDate[day]=(salesByDate[day]||0)+num(s.total_amount)});
   const unclosed=Object.entries(salesByDate).filter(([day])=>!closedDates.has(day));$('unclosedTable').innerHTML=table(['Date','Sales','Status'],unclosed.map(([day,v])=>[day,money(v),'<span class="pill danger">UNCLOSED</span>']));
 

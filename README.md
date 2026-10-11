@@ -87,3 +87,16 @@ For higher resilience in V2, move sale completion into one database RPC transact
 - Inactive accounts are blocked from the POS.
 - Requires the `manage-staff` Supabase Edge Function and V1.4 security SQL patch supplied with this package.
 - V1.3 sales, stock, purchases, weighted-average costing, stock count, expenses, cash-up and reports are preserved.
+
+
+## Assets and fund movements (11 October 2026)
+
+Managers can record equipment in Assets. Till, bank and owner-funded purchases create one matching payment in the same transaction. Register-only adds an existing asset without a new cash movement. Assets are listed at purchase cost; depreciation, disposals and a formal balance sheet are not implemented.
+
+Cash / Bank Movements captures owner contributions, drawings, till/bank transfers and payments for stock already received. These do not enter operating profit. Stock payments must be recorded separately from receipt of stock; do not duplicate them in Expenses. Bank movement totals are not reconciled bank balances or card settlement totals.
+
+Cash-up uses opening float + cash sales - cash operating expenses + till funds in - till funds out. Database validation recomputes new cash-ups and refuses new till movements for an already closed day. Correct a movement with a reversal dated to an open day, keeping the original. Historic cash-ups and existing expenses are preserved; no automatic reclassification is performed. Asset payment reversal flags its register entry as payment reversed and removes it from the active acquisition totals.
+
+Manager-only finance tables have RLS and append-only records. Active staff receive only aggregate totals needed for cash-up. The totals RPC uses a guarded security-definer function solely to aggregate otherwise manager-only expenses and funding movements.
+
+Deployment requires the finance migration before the updated scripts. Business dates for cash-up are calculated in Africa/Johannesburg.

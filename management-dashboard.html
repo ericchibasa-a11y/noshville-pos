@@ -41,6 +41,7 @@
         <button data-view="sales">Sales & Products</button>
         <button data-view="inventory">Inventory</button>
         <button data-view="expenses">Expenses & P/L</button>
+        <button data-view="finance">Assets &amp; Funding</button>
         <button data-view="cashups">Cash-Ups</button>
         <button data-view="purchases">Purchases</button>
       </div>
@@ -73,13 +74,18 @@
       </section>
 
       <section id="view-expenses" class="dash-view">
-        <div id="profitMetrics" class="metric-grid"></div>
+        <p class="section-note">Operating profit before depreciation and tax. Asset purchases, drawings and funding transfers are reported separately.</p><div id="profitMetrics" class="metric-grid"></div>
         <div class="two-col">
           <div class="report-section"><h2>Expenses by Category</h2><div id="expenseCategoryTable" class="table-wrap"></div></div>
           <div class="report-section"><h2>Expense Transactions</h2><div id="expenseTable" class="table-wrap"></div></div>
         </div>
       </section>
 
+      <section id="view-finance" class="dash-view">
+        <div id="fundMetrics" class="metric-grid"></div>
+        <div class="report-section"><h2>Asset Register</h2><p class="section-note">All registered assets at purchase cost. Depreciation and disposals are not calculated.</p><div id="dashAssets" class="table-wrap"></div></div>
+        <div class="report-section"><h2>Cash / Bank Movements</h2><p class="section-note">Selected-period funding movements, separate from operating profit. These totals are not reconciled bank balances.</p><div id="dashFunds" class="table-wrap"></div></div>
+      </section>
       <section id="view-cashups" class="dash-view">
         <div id="cashupMetrics" class="metric-grid"></div>
         <div class="two-col">
@@ -96,6 +102,7 @@
     </main>
   </div>
 
-  <script src="management-dashboard.js"></script>
+  <script src="finance-core.js?v=20261011"></script>
+  <script src="management-dashboard.js?v=20261011"></script>
 </body>
 </html>

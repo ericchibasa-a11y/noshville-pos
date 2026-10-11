@@ -84,3 +84,8 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);borde
 .pricing-result-cell strong{font-size:18px;color:#123d32;overflow-wrap:anywhere}
 .pricing-result-note{margin:10px 0 0;font-size:13px;color:#475467}
 @media(max-width:650px){.pricing-heading{display:block}.pricing-margin-control{margin-top:12px;max-width:220px}.pricing-form{grid-template-columns:1fr}.pricing-result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pricing-actions button{flex:1 1 150px}}
+
+/* Finance forms remain usable on phones. */
+#assetForm label,#fundForm label{display:block;min-width:0;font-size:14px;font-weight:700}
+#assetForm input,#assetForm select,#assetForm textarea,#fundForm input,#fundForm select{display:block;margin-top:6px;font-size:16px;font-weight:400}
+#saveAssetBtn:disabled,#saveFundBtn:disabled{opacity:.55;cursor:wait}
