@@ -33,7 +33,7 @@ async function loadAssets(){
   const reversed=new Set(funds.filter(r=>r.movement_type==='reversal'&&r.asset_id).map(r=>r.asset_id));
   const active=assets.filter(a=>!reversed.has(a.id));
   $('assetMetrics').innerHTML=[['Registered Assets',active.length],['Purchase Cost',money(active.reduce((s,a)=>s+Number(a.purchase_cost),0))]].map(x=>`<div class="summary-card"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
-  $('assetsTable').innerHTML=table(['Date','Asset','Serial','Cost','Funding','Supplier','Invoice','Location','Condition','Status'],assets.map(a=>[escapeHtml(a.purchase_date),escapeHtml(a.asset_name),escapeHtml(a.serial_number||''),money(a.purchase_cost),escapeHtml(NoshvilleFinance.accounts[a.payment_source]),escapeHtml(a.supplier||''),escapeHtml(a.invoice_reference||''),escapeHtml(a.location||''),escapeHtml(a.condition),reversed.has(a.id)?'Payment reversed':'Registered']));
+  $('assetsTable').innerHTML=table(['Asset Number','Date','Asset','Serial','Cost','Funding','Supplier','Invoice','Location','Condition','Status'],assets.map(a=>[escapeHtml(a.asset_number||''),escapeHtml(a.purchase_date),escapeHtml(a.asset_name),escapeHtml(a.serial_number||''),money(a.purchase_cost),escapeHtml(NoshvilleFinance.accounts[a.payment_source]),escapeHtml(a.supplier||''),escapeHtml(a.invoice_reference||''),escapeHtml(a.location||''),escapeHtml(a.condition),reversed.has(a.id)?'Payment reversed':'Registered']));
  }catch(e){$('assetsTable').textContent='Could not load assets: '+e.message;toast(e.message,true)}
 }
 async function saveAsset(){
