@@ -1,4 +1,4 @@
-let assetRequestId=crypto.randomUUID(),fundRequestId=crypto.randomUUID();
+let assetRequestId=NoshvilleFinance.requestId(),fundRequestId=NoshvilleFinance.requestId();
 const financeSelect='*,original:fund_movements!fund_movements_reversal_of_fkey(movement_type)';
 const financeText=id=>$(id).value.trim()||null;
 function managerFinance(){if(profile?.role!=='manager')throw new Error('Manager access required');}
@@ -33,7 +33,7 @@ async function saveAsset(){
   if(!financeText('aName')||!$('aDate').value||!Number.isFinite(cost)||cost<=0)throw new Error('Enter asset name, purchase date and a positive cost');
   const {error}=await sb.rpc('record_business_asset',{p_id:assetRequestId,p_name:financeText('aName'),p_date:$('aDate').value,p_cost:cost,p_source:$('aSource').value,p_serial:financeText('aSerial'),p_supplier:financeText('aSupplier'),p_reference:financeText('aReference'),p_location:financeText('aLocation'),p_condition:$('aCondition').value,p_notes:financeText('aNotes')});
   if(error)throw error;
-  assetRequestId=crypto.randomUUID();['aName','aCost','aSerial','aSupplier','aReference','aNotes'].forEach(id=>$(id).value='');
+  assetRequestId=NoshvilleFinance.requestId();['aName','aCost','aSerial','aSupplier','aReference','aNotes'].forEach(id=>$(id).value='');
   toast('Asset recorded. Its payment is recorded once and excluded from operating expenses.');await loadAssets();
  }catch(e){toast(e.message,true)}finally{btn.disabled=false}
 }
@@ -58,7 +58,7 @@ async function saveFund(){
   if(!$('fDate').value||!financeText('fDescription')||!Number.isFinite(amount)||amount<=0)throw new Error('Enter date, description and a positive amount');
   const {error}=await sb.from('fund_movements').insert({id:fundRequestId,movement_date:$('fDate').value,movement_type:$('fType').value,from_account:$('fFrom').value,to_account:$('fTo').value,amount,description:financeText('fDescription'),reference:financeText('fReference'),created_by:session.user.id});
   if(error){if(error.code!=='23505')throw error;const existing=await sb.from('fund_movements').select('id').eq('id',fundRequestId).maybeSingle();if(existing.error||!existing.data)throw error;}
-  fundRequestId=crypto.randomUUID();['fAmount','fDescription','fReference'].forEach(id=>$(id).value='');toast('Movement recorded');await loadFunds();
+  fundRequestId=NoshvilleFinance.requestId();['fAmount','fDescription','fReference'].forEach(id=>$(id).value='');toast('Movement recorded');await loadFunds();
  }catch(e){toast(e.message,true)}finally{btn.disabled=false}
 }
 async function reverseFund(row,btn){
@@ -77,5 +77,5 @@ async function loadFinanceReport(from,to){
 }
 ['aDate','fDate'].forEach(id=>$(id).value=today());
 $('saveAssetBtn').onclick=saveAsset;$('saveFundBtn').onclick=saveFund;$('fType').onchange=fundAccounts;$('fFrom').onchange=fundAccounts;
-$('assetForm').addEventListener('input',()=>assetRequestId=crypto.randomUUID());$('fundForm').addEventListener('input',()=>fundRequestId=crypto.randomUUID());
+$('assetForm').addEventListener('input',()=>assetRequestId=NoshvilleFinance.requestId());$('fundForm').addEventListener('input',()=>fundRequestId=NoshvilleFinance.requestId());
 fundAccounts();
