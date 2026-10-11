@@ -1,14 +1,24 @@
 let assetRequestId=NoshvilleFinance.requestId(),fundRequestId=NoshvilleFinance.requestId();
-const financeSelect='*,original:fund_movements!fund_movements_reversal_of_fkey(movement_type)';
 const financeText=id=>$(id).value.trim()||null;
 function managerFinance(){if(profile?.role!=='manager')throw new Error('Manager access required');}
 async function financeRows(tableName,from,to){
  let rows=[];
  for(let offset=0;;offset+=1000){
-  let q=sb.from(tableName).select(tableName==='fund_movements'?financeSelect:'*').order(tableName==='fund_movements'?'movement_date':'purchase_date',{ascending:false}).order('id').range(offset,offset+999);
+  let q=sb.from(tableName).select('*').order(tableName==='fund_movements'?'movement_date':'purchase_date',{ascending:false}).order('id').range(offset,offset+999);
   if(from)q=q.gte('movement_date',from).lte('movement_date',to);
-  const {data,error}=await q;if(error)throw error;rows.push(...data);if(data.length<1000)return rows;
+  const {data,error}=await q;if(error)throw error;rows.push(...data);if(data.length<1000)break;
  }
+ // Fetch originals outside the selected period without a self-relationship embed.
+ if(tableName==='fund_movements'){
+  const originals=new Map(rows.map(r=>[r.id,r]));
+  const missing=[...new Set(rows.filter(r=>r.reversal_of&&!originals.has(r.reversal_of)).map(r=>r.reversal_of))];
+  for(let offset=0;offset<missing.length;offset+=100){
+   const {data,error}=await sb.from('fund_movements').select('id,movement_type').in('id',missing.slice(offset,offset+100));
+   if(error)throw error;for(const r of data)originals.set(r.id,r);
+  }
+  for(const r of rows)if(r.reversal_of)r.original=originals.get(r.reversal_of)||null;
+ }
+ return rows;
 }
 function financeMovementTable(rows,corrections=false){
  const reversed=new Set(rows.filter(r=>r.reversal_of).map(r=>r.reversal_of));
