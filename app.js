@@ -71,7 +71,7 @@ function renderProductGrid() {
   if($('visibleProductCount')) $('visibleProductCount').textContent=`${list.length} item${list.length===1?'':'s'}`;
   if($('categoryButtons')) renderCategoryButtons();
   $('productGrid').innerHTML=list.map(p=>{
-    const stock=Number(p.stock_qty||0);
+    const stock=availableStock(p);
     const reorder=Number(p.reorder_level||0);
     const badge = stock<=0
       ? '<div class="stock-badge out">OUT OF STOCK</div>'
@@ -99,12 +99,14 @@ function updateTenderChange() {
   $('changeRow').classList.toggle('hidden',payment!=='cash');
 }
 
+function availableStock(p) { const parent=p.stock_parent_product_id ? products.find(x=>x.id===p.stock_parent_product_id) : p; return Number(parent?.stock_qty||0); }
+function sharedCartQty(p,excludeId=null) { const root=p.stock_parent_product_id||p.id; return cart.filter(x=>x.id!==excludeId&&(x.stock_parent_product_id||x.id)===root).reduce((n,x)=>n+Number(x.qty),0); }
 function addToCart(id) {
   const p=products.find(x=>x.id===id); if(!p) return;
-  if(p.track_stock && Number(p.stock_qty)<=0) return toast('This product is out of stock',true);
+  if(p.track_stock && availableStock(p)<=0) return toast('This product is out of stock',true);
   const existing=cart.find(x=>x.id===id);
   const next=(existing?.qty||0)+1;
-  if(p.track_stock && next>Number(p.stock_qty)) return toast('Not enough stock',true);
+  if(p.track_stock && next+sharedCartQty(p,p.id)>availableStock(p)) return toast('Not enough stock',true);
   if(existing) existing.qty=next; else cart.push({...p,qty:1});
   renderCart();
 }
@@ -181,7 +183,7 @@ function printBarcodeLabel(barcodeId){
 }
 function renderCart() {
   $('cart').innerHTML=cart.map((x,i)=>`<div class="cart-row"><div>${x.name}</div><input type="number" min="0.001" step="0.001" value="${x.qty}" data-q="${i}"><div>${money(x.qty*x.selling_price)}</div><button data-r="${i}">×</button></div>`).join('') || '<p class="muted">No items yet</p>';
-  document.querySelectorAll('[data-q]').forEach(el=>el.onchange=()=>{const i=+el.dataset.q; const q=+el.value; if(q<=0)cart.splice(i,1); else if(cart[i].track_stock && q>Number(cart[i].stock_qty)){toast('Not enough stock',true); el.value=cart[i].qty;} else cart[i].qty=q; renderCart();});
+  document.querySelectorAll('[data-q]').forEach(el=>el.onchange=()=>{const i=+el.dataset.q; const q=+el.value; if(q<=0)cart.splice(i,1); else if(cart[i].track_stock && q+sharedCartQty(cart[i],cart[i].id)>availableStock(cart[i])){toast('Not enough stock',true); el.value=cart[i].qty;} else cart[i].qty=q; renderCart();});
   document.querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>{cart.splice(+el.dataset.r,1);renderCart();});
   const sub=cart.reduce((a,x)=>a+x.qty*Number(x.selling_price),0), disc=Number($('discount').value||0), total=Math.max(0,sub-disc);
   $('subtotal').textContent=money(sub); $('total').textContent=money(total); updateTenderChange();
