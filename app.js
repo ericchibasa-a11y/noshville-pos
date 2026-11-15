@@ -18,6 +18,13 @@ function toast(msg, error=false) {
 function table(headers, rows) {
   return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c??''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
+// Only managers can switch until Birch Acres staff identity is verified and allowlisted.
+const birchAcresStaffIds = new Set([]);
+function updateCrossPosSwitch(){
+ const link=$('noshvilleSwitchToFeasterville'); if(!link)return;
+ const permitted=!!profile?.is_active&&(profile.role==='manager'||(profile.role==='salesperson'&&birchAcresStaffIds.has(session?.user?.id)));
+ link.classList.toggle('hidden',!permitted);
+}
 async function loadProfile() {
   const {data,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
   if(error) throw error; profile=data;
@@ -27,6 +34,7 @@ async function loadProfile() {
     throw new Error('This staff account is inactive. Please contact the manager.');
   }
   $('userInfo').textContent=`${profile.full_name||session.user.email} • ${profile.role}`;
+  updateCrossPosSwitch();
   document.querySelectorAll('[data-manager]').forEach(el=>el.classList.toggle('hidden',profile.role!=='manager'));
 }
 async function refreshBase() {
