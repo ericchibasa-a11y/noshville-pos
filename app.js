@@ -517,7 +517,7 @@ async function loadWholesale() {
   const [locations,orders,catalogue,prices,mappings]=await Promise.all([
     sb.from('b2b_customer_locations').select('store_code,store_name,active').order('store_name'),
     sb.from('b2b_wholesale_orders').select('id,store_code,status,created_at').order('created_at',{ascending:false}).limit(50),
-    sb.from('b2b_feasterville_catalogue').select('input_code,input_name,source_units,markup_percent').eq('wholesale_enabled',true).order('input_name'),
+    sb.from('b2b_feasterville_catalogue').select('input_code,input_name,source_units,markup_percent,manager_notes,review_priority').eq('wholesale_enabled',true).order('input_name'),
     sb.from('b2b_wholesale_safe_prices').select('input_code,input_name,proposed_unit_price,feasterville_reference_cost,candidate_feasterville_price,approval_status').order('input_name'),
     sb.from('b2b_product_mapping').select('feasterville_input_code,supplier_units,feasterville_units,feasterville_unit,verified').eq('verified',true).limit(100)
   ]);
@@ -527,8 +527,9 @@ async function loadWholesale() {
   $('wholesaleOrders').innerHTML=(orders.data||[]).length
     ?table(['Order ID','Store','Status','Created'],orders.data.map(x=>[escapeHtml(x.id),escapeHtml(x.store_code),escapeHtml(x.status),escapeHtml(x.created_at)]))
     :'<p class="muted">No wholesale orders recorded.</p>';
-  $('wholesaleCatalogue').innerHTML=table(['Code','Input','Feasterville unit(s)','Markup'],(catalogue.data||[]).map(x=>[escapeHtml(x.input_code),escapeHtml(x.input_name),escapeHtml(x.source_units),x.markup_percent==null?'Pending cost review':Number(x.markup_percent).toFixed(1)+'%']));
+  $('wholesaleCatalogue').innerHTML=table(['Code','Input','Unit(s)','Markup','Review note','Priority'] ,(catalogue.data||[]).map(x=>[escapeHtml(x.input_code),escapeHtml(x.input_name),escapeHtml(x.source_units),x.markup_percent==null?'Pending cost review':Number(x.markup_percent).toFixed(1)+'%',`<input class="wholesale-note" data-code="${escapeHtml(x.input_code)}" value="${escapeHtml(x.manager_notes)}" placeholder="Correction / supplier / pack size" style="min-width:160px" />`, `<select class="wholesale-priority" data-code="${escapeHtml(x.input_code)}"><option value="normal" ${x.review_priority==='normal'?'selected':''}>Normal</option><option value="high" ${x.review_priority==='high'?'selected':''}>High</option></select>`]));
   $('wholesalePriceReview').innerHTML=table(['Input','Proposed price','Feasterville baseline','Capped candidate','Approval'] ,(prices.data||[]).map(x=>[escapeHtml(x.input_name),x.proposed_unit_price==null?'Pending':money(x.proposed_unit_price),x.feasterville_reference_cost==null?'Not verified':money(x.feasterville_reference_cost),x.candidate_feasterville_price==null?'Blocked':money(x.candidate_feasterville_price),escapeHtml(x.approval_status)]));
+  $('wholesaleCatalogue').querySelectorAll('.wholesale-note,.wholesale-priority').forEach(el=>el.addEventListener('change',async()=>{if(profile?.role!=='manager'||!profile?.is_active)return;const code=el.dataset.code;const row=el.closest('tr');const note=row.querySelector('.wholesale-note').value;const priority=row.querySelector('.wholesale-priority').value;const {error}=await sb.from('b2b_feasterville_catalogue').update({manager_notes:note,review_priority:priority,review_updated_at:new Date().toISOString()}).eq('input_code',code);toast(error?'Could not save review: '+error.message:'Review note saved',!!error);}));
   $('wholesaleMappings').innerHTML=(mappings.data||[]).length
     ?table(['Feasterville input','Supplier units','Store units','Unit'],mappings.data.map(x=>[escapeHtml(x.feasterville_input_code),Number(x.supplier_units),Number(x.feasterville_units),escapeHtml(x.feasterville_unit)]))
     :'<p class="muted">No product conversions verified yet.</p>';
