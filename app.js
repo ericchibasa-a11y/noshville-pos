@@ -554,6 +554,7 @@ $('loginBtn').onclick=async()=>{const {data,error}=await sb.auth.signInWithPassw
 $('bootstrapBtn').onclick=bootstrapManager;
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+$('wholesaleQuickBtn').onclick=()=>showTab('wholesale');
 $('wholesaleRefreshBtn').onclick=loadWholesale;
 $('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=()=>{renderCategoryButtons();renderProductGrid();};$('clearSaleSearchBtn').onclick=()=>{$('saleSearch').value='';renderProductGrid();$('saleSearch').focus();};$('discount').oninput=renderCart;
 $('saleBarcode').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();scanSaleBarcode();}});$('scanBarcodeBtn').onclick=scanSaleBarcode;
