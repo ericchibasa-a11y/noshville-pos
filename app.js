@@ -514,17 +514,19 @@ async function bootstrapManager() {
 async function loadWholesale() {
   if(profile?.role!=='manager'||!profile?.is_active) return;
   const status=$('wholesaleStatus'); status.textContent='Loading wholesale data...';
-  const [locations,orders,mappings]=await Promise.all([
+  const [locations,orders,catalogue,mappings]=await Promise.all([
     sb.from('b2b_customer_locations').select('store_code,store_name,active').order('store_name'),
     sb.from('b2b_wholesale_orders').select('id,store_code,status,created_at').order('created_at',{ascending:false}).limit(50),
+    sb.from('b2b_feasterville_catalogue').select('input_code,input_name,source_units,markup_percent').eq('wholesale_enabled',true).order('input_name'),
     sb.from('b2b_product_mapping').select('feasterville_input_code,supplier_units,feasterville_units,feasterville_unit,verified').eq('verified',true).limit(100)
   ]);
-  const error=locations.error||orders.error||mappings.error;
+  const error=locations.error||orders.error||catalogue.error||mappings.error;
   if(error){status.textContent='Unable to load wholesale records: '+error.message;return;}
   $('wholesaleLocations').innerHTML=table(['Store','Code','Status'],(locations.data||[]).map(x=>[escapeHtml(x.store_name),escapeHtml(x.store_code),x.active?'Active':'Inactive']));
   $('wholesaleOrders').innerHTML=(orders.data||[]).length
     ?table(['Order ID','Store','Status','Created'],orders.data.map(x=>[escapeHtml(x.id),escapeHtml(x.store_code),escapeHtml(x.status),escapeHtml(x.created_at)]))
     :'<p class="muted">No wholesale orders recorded.</p>';
+  $('wholesaleCatalogue').innerHTML=table(['Code','Input','Feasterville unit(s)','Markup'],(catalogue.data||[]).map(x=>[escapeHtml(x.input_code),escapeHtml(x.input_name),escapeHtml(x.source_units),x.markup_percent==null?'Pending cost review':Number(x.markup_percent).toFixed(1)+'%']));
   $('wholesaleMappings').innerHTML=(mappings.data||[]).length
     ?table(['Feasterville input','Supplier units','Store units','Unit'],mappings.data.map(x=>[escapeHtml(x.feasterville_input_code),Number(x.supplier_units),Number(x.feasterville_units),escapeHtml(x.feasterville_unit)]))
     :'<p class="muted">No product conversions verified yet.</p>';
