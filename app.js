@@ -511,12 +511,31 @@ async function bootstrapManager() {
   const {data,error}=await sb.rpc('bootstrap_first_manager'); if(error)return toast(error.message,true);
   toast('First manager activated'); await loadProfile(); await refreshBase();
 }
+async function loadWholesale() {
+  if(profile?.role!=='manager'||!profile?.is_active) return;
+  const status=$('wholesaleStatus'); status.textContent='Loading wholesale data...';
+  const [locations,orders,mappings]=await Promise.all([
+    sb.from('b2b_customer_locations').select('store_code,store_name,active').order('store_name'),
+    sb.from('b2b_wholesale_orders').select('id,store_code,status,created_at').order('created_at',{ascending:false}).limit(50),
+    sb.from('b2b_product_mapping').select('feasterville_input_code,supplier_units,feasterville_units,feasterville_unit,verified').eq('verified',true).limit(100)
+  ]);
+  const error=locations.error||orders.error||mappings.error;
+  if(error){status.textContent='Unable to load wholesale records: '+error.message;return;}
+  $('wholesaleLocations').innerHTML=table(['Store','Code','Status'],(locations.data||[]).map(x=>[escapeHtml(x.store_name),escapeHtml(x.store_code),x.active?'Active':'Inactive']));
+  $('wholesaleOrders').innerHTML=(orders.data||[]).length
+    ?table(['Order ID','Store','Status','Created'],orders.data.map(x=>[escapeHtml(x.id),escapeHtml(x.store_code),escapeHtml(x.status),escapeHtml(x.created_at)]))
+    :'<p class="muted">No wholesale orders recorded.</p>';
+  $('wholesaleMappings').innerHTML=(mappings.data||[]).length
+    ?table(['Feasterville input','Supplier units','Store units','Unit'],mappings.data.map(x=>[escapeHtml(x.feasterville_input_code),Number(x.supplier_units),Number(x.feasterville_units),escapeHtml(x.feasterville_unit)]))
+    :'<p class="muted">No product conversions verified yet.</p>';
+  status.textContent='Wholesale records loaded (read-only).';
+}
 function showTab(name) {
   if(name==='wholesale' && profile?.role!=='manager') { toast('Manager access required',true); return; }
   if(!$('tab-'+name)) return;
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
   $('tab-'+name).classList.add('active'); document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-  if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='assets')loadAssets(); if(name==='funds')loadFunds(); if(name==='banking')loadBanking(); if(name==='accounting')loadAccounting(); if(name==='cashup'){cashupPreview().catch(e=>toast(e.message,true));loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
+  if(name==='wholesale')loadWholesale(); if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='assets')loadAssets(); if(name==='funds')loadFunds(); if(name==='banking')loadBanking(); if(name==='accounting')loadAccounting(); if(name==='cashup'){cashupPreview().catch(e=>toast(e.message,true));loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
 }
 async function enterApp() {
   $('authView').classList.add('hidden');$('appView').classList.remove('hidden');
@@ -531,6 +550,7 @@ $('loginBtn').onclick=async()=>{const {data,error}=await sb.auth.signInWithPassw
 $('bootstrapBtn').onclick=bootstrapManager;
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload();};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+$('wholesaleRefreshBtn').onclick=loadWholesale;
 $('saleSearch').oninput=renderProductGrid;$('categoryFilter').onchange=()=>{renderCategoryButtons();renderProductGrid();};$('clearSaleSearchBtn').onclick=()=>{$('saleSearch').value='';renderProductGrid();$('saleSearch').focus();};$('discount').oninput=renderCart;
 $('saleBarcode').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();scanSaleBarcode();}});$('scanBarcodeBtn').onclick=scanSaleBarcode;
 $('amountTendered').oninput=updateTenderChange;$('paymentMethod').onchange=()=>{updateTenderChange();};
