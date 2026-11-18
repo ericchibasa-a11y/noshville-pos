@@ -53,6 +53,7 @@
       <button data-tab="sale" class="active">SALE</button>
       <button data-tab="products" data-manager>PRODUCTS & PRICING</button>
       <button data-tab="stock" data-manager>STOCK / PURCHASES</button>
+      <button data-tab="wholesale" data-manager>FEASTERVILLE WHOLESALE</button>
       <button data-tab="stockcount" data-manager>STOCK COUNT</button>
       <button data-tab="suppliers" data-manager>SUPPLIERS</button>
       <button data-tab="expenses">EXPENSES</button>
@@ -379,6 +380,28 @@
           <p class="small muted">Give the temporary password to the employee privately. They can use it to sign in immediately.</p>
           <h3>Existing Staff</h3>
           <div id="staffTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-wholesale" class="tab" data-manager>
+        <div class="panel">
+          <h2>Feasterville Wholesale Supply</h2>
+          <p class="muted">Manager-only B2B supply workspace. Integration is being prepared; ordering, dispatch, invoices and stock posting are not yet enabled.</p>
+          <div class="summary-cards">
+            <div class="panel"><strong>Ndayini</strong><p>Wholesale supply location</p></div>
+            <div class="panel"><strong>Sivana</strong><p>Wholesale supply location</p></div>
+            <div class="panel"><strong>Birch Acres</strong><p>Wholesale supply location</p></div>
+          </div>
+          <h3>Implementation workstreams</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th>Module</th><th>Status</th></tr></thead><tbody>
+              <tr><td>Product mapping and pack conversions</td><td>Pending validation</td></tr>
+              <tr><td>Store orders and replenishment</td><td>Not enabled</td></tr>
+              <tr><td>Picking and dispatch</td><td>Not enabled</td></tr>
+              <tr><td>Wholesale invoices and reconciliation</td><td>Not enabled</td></tr>
+            </tbody></table>
+          </div>
+          <p class="small muted">Separate Feasterville and Noshville databases are retained. No live stock or accounting changes occur in this tab.</p>
         </div>
       </section>
 
