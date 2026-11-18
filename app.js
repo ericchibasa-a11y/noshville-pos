@@ -512,6 +512,8 @@ async function bootstrapManager() {
   toast('First manager activated'); await loadProfile(); await refreshBase();
 }
 function showTab(name) {
+  if(name==='wholesale' && profile?.role!=='manager') { toast('Manager access required',true); return; }
+  if(!$('tab-'+name)) return;
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
   $('tab-'+name).classList.add('active'); document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
   if(name==='sale')setTimeout(()=>$('saleBarcode')?.focus(),80); if(name==='stock')loadReorder(); if(name==='stockcount'){updateCountPreview();loadStockAdjustments();} if(name==='expenses')loadExpenses(); if(name==='assets')loadAssets(); if(name==='funds')loadFunds(); if(name==='banking')loadBanking(); if(name==='accounting')loadAccounting(); if(name==='cashup'){cashupPreview().catch(e=>toast(e.message,true));loadCashups();} if(name==='reports')loadReports(); if(name==='staff')loadStaff();
