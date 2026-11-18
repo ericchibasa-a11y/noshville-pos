@@ -386,22 +386,16 @@
       <section id="tab-wholesale" class="tab" data-manager>
         <div class="panel">
           <h2>Feasterville Wholesale Supply</h2>
-          <p class="muted">Manager-only B2B supply workspace. Integration is being prepared; ordering, dispatch, invoices and stock posting are not yet enabled.</p>
-          <div class="summary-cards">
-            <div class="panel"><strong>Ndayini</strong><p>Wholesale supply location</p></div>
-            <div class="panel"><strong>Sivana</strong><p>Wholesale supply location</p></div>
-            <div class="panel"><strong>Birch Acres</strong><p>Wholesale supply location</p></div>
-          </div>
-          <h3>Implementation workstreams</h3>
-          <div class="table-wrap">
-            <table><thead><tr><th>Module</th><th>Status</th></tr></thead><tbody>
-              <tr><td>Product mapping and pack conversions</td><td>Pending validation</td></tr>
-              <tr><td>Store orders and replenishment</td><td>Not enabled</td></tr>
-              <tr><td>Picking and dispatch</td><td>Not enabled</td></tr>
-              <tr><td>Wholesale invoices and reconciliation</td><td>Not enabled</td></tr>
-            </tbody></table>
-          </div>
-          <p class="small muted">Separate Feasterville and Noshville databases are retained. No live stock or accounting changes occur in this tab.</p>
+          <p class="muted">Manager-only wholesale workspace. Read-only until purchasing, dispatch and receiving controls pass testing.</p>
+          <button type="button" id="wholesaleRefreshBtn" class="secondary">Refresh wholesale data</button>
+          <p id="wholesaleStatus" class="small muted" role="status">Open this tab to load wholesale records.</p>
+          <h3>Feasterville supply locations</h3>
+          <div id="wholesaleLocations" class="table-wrap"></div>
+          <h3>Wholesale orders</h3>
+          <div id="wholesaleOrders" class="table-wrap"></div>
+          <h3>Verified product conversions</h3>
+          <div id="wholesaleMappings" class="table-wrap"></div>
+          <p class="small muted">Store orders, dispatches, invoices and stock posting remain disabled. No cross-database writes are performed.</p>
         </div>
       </section>
 
