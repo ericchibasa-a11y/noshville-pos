@@ -53,6 +53,7 @@
       <button data-tab="sale" class="active">SALE</button>
       <button data-tab="products" data-manager>PRODUCTS & PRICING</button>
       <button data-tab="stock" data-manager>STOCK / PURCHASES</button>
+      <button data-tab="wholesale" data-manager>FEASTERVILLE WHOLESALE</button>
       <button data-tab="stockcount" data-manager>STOCK COUNT</button>
       <button data-tab="suppliers" data-manager>SUPPLIERS</button>
       <button data-tab="expenses">EXPENSES</button>
@@ -379,6 +380,26 @@
           <p class="small muted">Give the temporary password to the employee privately. They can use it to sign in immediately.</p>
           <h3>Existing Staff</h3>
           <div id="staffTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-wholesale" class="tab" data-manager>
+        <div class="panel">
+          <h2>Feasterville Wholesale Supply</h2>
+          <p class="muted">Manager-only wholesale workspace. Read-only until purchasing, dispatch and receiving controls pass testing.</p>
+          <button type="button" id="wholesaleRefreshBtn" class="secondary">Refresh wholesale data</button>
+          <p id="wholesaleStatus" class="small muted" role="status">Open this tab to load wholesale records.</p>
+          <h3>Feasterville supply locations</h3>
+          <div id="wholesaleLocations" class="table-wrap"></div>
+          <h3>Wholesale orders</h3>
+          <div id="wholesaleOrders" class="table-wrap"></div>
+          <h3>Feasterville inputs catalogue (excluding soft drinks and ice cream)</h3>
+          <div id="wholesaleCatalogue" class="table-wrap"></div>
+          <h3>Wholesale price protection review</h3>
+          <div id="wholesalePriceReview" class="table-wrap"></div>
+          <h3>Verified product conversions</h3>
+          <div id="wholesaleMappings" class="table-wrap"></div>
+          <p class="small muted">Store orders, dispatches, invoices and stock posting remain disabled. No cross-database writes are performed.</p>
         </div>
       </section>
 
