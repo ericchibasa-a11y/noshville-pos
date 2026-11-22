@@ -198,16 +198,16 @@ function renderCart() {
 }
 async function completeSale() {
   if(!cart.length) return toast('Add items first',true);
-  // Mandatory empty-bottle verification for returnable 1.25L glass drinks.
-  const returnable = cart.filter(x => /1[.,]25\\s*l|1250\\s*ml/i.test(String(x.name||'')) && /glass|bottle|coca-cola/i.test(String(x.name||'')));
+  // Mandatory returnable bottle check for 1.25L and 300ml soft drinks.
+  const returnable = cart.filter(x => /1[.,]25\\s*l|1250\\s*ml|300\\s*ml/i.test(String(x.name||'')) && /glass|bottle|coca-cola|sprite|fanta|stoney|sparletta/i.test(String(x.name||'')));
   if(returnable.length) {
-    const answer = window.prompt('Does the customer have an empty 1.25L bottle to exchange? Type YES or NO. Cancel stops the sale.');
+    const answer = window.prompt('Does the customer have an empty returnable bottle to exchange (1.25L / 300ml)? Type YES or NO. Cancel stops the sale.');
     if(answer === null || !/^(yes|no)$/i.test(String(answer).trim())) {
       return toast('Sale blocked: confirm YES or NO for the empty bottle.',true);
     }
     const withEmpty = /^yes$/i.test(String(answer).trim());
     const requiredPrice = withEmpty ? 15 : 20;
-    if(returnable.some(x => Math.abs(Number(x.selling_price)-requiredPrice)>0.001)) {
+    if(returnable.some(x => /1[.,]25\\s*l|1250\\s*ml/i.test(String(x.name||'')) && Math.abs(Number(x.selling_price)-requiredPrice)>0.001)) {
       return toast('Sale blocked: choose the R'+requiredPrice+' 1.25L option for this customer.',true);
     }
   }
