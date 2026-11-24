@@ -19,11 +19,15 @@ function table(headers, rows) {
   return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c??''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 // Only managers can switch until Birch Acres staff identity is verified and allowlisted.
-const birchAcresStaffIds = new Set([]);
+const birchAcresStaffIds = new Set(['a4ac3f9b-d882-45b6-bfad-3caebac2d6eb']);
 function updateCrossPosSwitch(){
  const link=$('noshvilleSwitchToFeasterville'); if(!link)return;
  const permitted=!!profile?.is_active&&(profile.role==='manager'||(profile.role==='salesperson'&&birchAcresStaffIds.has(session?.user?.id)));
  link.classList.toggle('hidden',!permitted);
+ link.onclick = function(event){
+   if(!permitted || cart.length){event.preventDefault(); if(cart.length) toast('Complete or clear the current sale before switching POS.',true); return false;}
+   return true;
+ };
 }
 async function loadProfile() {
   const {data,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();
