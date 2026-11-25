@@ -19,7 +19,7 @@ function table(headers, rows) {
   return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c??''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 // Only managers can switch until Birch Acres staff identity is verified and allowlisted.
-const birchAcresStaffIds = new Set(['a4ac3f9b-d882-45b6-bfad-3caebac2d6eb']);
+const birchAcresStaffIds = new Set(['5ec533c4-abac-446f-acb1-9d821e414336']);
 function updateCrossPosSwitch(){
  const link=$('noshvilleSwitchToFeasterville'); if(!link)return;
  const permitted=!!profile?.is_active&&(profile.role==='manager'||(profile.role==='salesperson'&&birchAcresStaffIds.has(session?.user?.id)));
